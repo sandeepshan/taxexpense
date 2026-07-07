@@ -311,7 +311,8 @@
   <button class="tab-btn" data-view="add" onclick="showView('add')">➕ Add Expense</button>
   <button class="tab-btn" data-view="records" onclick="showView('records')">📋 All Records</button>
   <button class="tab-btn" data-view="property" onclick="showView('property')">🏘️ Investment Property</button>
-  <button class="tab-btn" data-view="property-super" onclick="showView('property-super')">🏦 Investment Property - Superannuation</button>
+  <button class="tab-btn" data-view="ps-darwin" onclick="showView('ps-darwin')">🏦 SMSF Property - Darwin</button>
+  <button class="tab-btn" data-view="ps-melbourne" onclick="showView('ps-melbourne')">🏦 SMSF Property - Melbourne</button>
   <button class="tab-btn" data-view="accountant" onclick="showView('accountant')">🧾 For Accountant</button>
 </nav>
 
@@ -548,61 +549,54 @@
     </div>
   </div>
 
-  <!-- SMSF INVESTMENT PROPERTY VIEW -->
-  <div class="view" id="view-property-super">
+  <!-- SMSF INVESTMENT PROPERTY — DARWIN -->
+  <div class="view" id="view-ps-darwin">
     <div class="cards-row">
       <div class="card c-teal">
         <div class="k">Total Income (this FY)</div>
-        <div class="v" id="ps-stat-income">$0</div>
+        <div class="v" id="psd-stat-income">$0</div>
         <div class="sub">Super contributions + rental</div>
       </div>
       <div class="card c-coral">
         <div class="k">Total Expenses</div>
-        <div class="v" id="ps-stat-expenses">$0</div>
+        <div class="v" id="psd-stat-expenses">$0</div>
         <div class="sub">Loan + other expenses</div>
       </div>
       <div class="card c-navy">
         <div class="k">Net result</div>
-        <div class="v" id="ps-stat-net">$0</div>
-        <div class="sub" id="ps-stat-net-sub">Income minus expenses</div>
+        <div class="v" id="psd-stat-net">$0</div>
+        <div class="sub" id="psd-stat-net-sub">Income minus expenses</div>
       </div>
       <div class="card c-gold">
         <div class="k">Entries logged</div>
-        <div class="v" id="ps-stat-count">0</div>
+        <div class="v" id="psd-stat-count">0</div>
         <div class="sub">this financial year</div>
       </div>
     </div>
 
     <div class="grid-2">
       <div class="panel">
-        <h3><span class="icon">🏦</span>Log a period's figures</h3>
-        <form id="ps-form" onsubmit="return addPsEntry(event)">
-          <div class="field" style="margin-bottom:12px;">
-            <label>Property</label>
-            <select id="ps-property" required>
-              <option value="Darwin">Darwin</option>
-              <option value="Melbourne">Melbourne</option>
-            </select>
-          </div>
+        <h3><span class="icon">🏦</span>Log a period's figures — Darwin</h3>
+        <form id="psd-form" onsubmit="return addPsEntry(event, 'Darwin')">
           <div class="field" style="margin-bottom:12px;">
             <label>Financial year</label>
-            <input type="text" id="ps-fy-display" disabled style="background:#eef1f6;color:var(--muted);cursor:not-allowed;">
+            <input type="text" id="psd-fy-display" disabled style="background:#eef1f6;color:var(--muted);cursor:not-allowed;">
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Period type</label>
-            <select id="ps-period-type" onchange="onPsPeriodTypeChange()">
+            <select id="psd-period-type" onchange="onPsPeriodTypeChange('Darwin')">
               <option value="Month">Month</option>
               <option value="Quarter">Quarter</option>
               <option value="Year">Full Year</option>
             </select>
           </div>
-          <div class="field" style="margin-bottom:12px;" id="ps-month-wrap">
+          <div class="field" style="margin-bottom:12px;" id="psd-month-wrap">
             <label>Month</label>
-            <select id="ps-month" onchange="updatePsFyDisplay()"></select>
+            <select id="psd-month" onchange="updatePsFyDisplay('Darwin')"></select>
           </div>
-          <div class="field" style="margin-bottom:12px;display:none;" id="ps-quarter-wrap">
+          <div class="field" style="margin-bottom:12px;display:none;" id="psd-quarter-wrap">
             <label>Quarter</label>
-            <select id="ps-quarter">
+            <select id="psd-quarter">
               <option value="1">Quarter 1</option>
               <option value="2">Quarter 2</option>
               <option value="3">Quarter 3</option>
@@ -611,52 +605,139 @@
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Sandeep's Super Contribution</label>
-            <input type="number" id="ps-sandeep-super" step="0.01" min="0" placeholder="0.00">
+            <input type="number" id="psd-sandeep-super" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Neetha's Super Contribution</label>
-            <input type="number" id="ps-neetha-super" step="0.01" min="0" placeholder="0.00">
+            <input type="number" id="psd-neetha-super" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Rental Income</label>
-            <input type="number" id="ps-rental" step="0.01" min="0" placeholder="0.00">
+            <input type="number" id="psd-rental" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Loan (per statement)</label>
-            <input type="number" id="ps-loan" step="0.01" min="0" placeholder="0.00">
+            <input type="number" id="psd-loan" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Other expenses</label>
-            <input type="number" id="ps-other" step="0.01" min="0" placeholder="0.00">
+            <input type="number" id="psd-other" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Notes (optional)</label>
-            <input type="text" id="ps-notes" placeholder="e.g. figures from SMSF bank + loan statements">
+            <input type="text" id="psd-notes" placeholder="e.g. figures from SMSF bank + loan statements">
           </div>
-          <button type="submit" id="ps-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
+          <button type="submit" id="psd-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
         </form>
       </div>
       <div class="panel">
         <h3><span class="icon">📊</span>Expense breakdown</h3>
-        <canvas id="chart-ps" height="220"></canvas>
-        <h3 style="margin-top:24px;"><span class="icon">🏘️</span>Net result — Darwin vs Melbourne</h3>
-        <canvas id="chart-ps-compare" height="180"></canvas>
+        <canvas id="chart-psd" height="220"></canvas>
       </div>
     </div>
 
     <div class="panel">
       <div class="toolbar">
-        <h3 style="margin:0;"><span class="icon">📋</span>Superannuation property records — FY <span id="ps-fy-label"></span></h3>
-        <div class="filters">
-          <select id="ps-filter-property" onchange="renderPsRecords();renderPsDashboard();">
-            <option value="">Both properties</option>
-            <option value="Darwin">Darwin only</option>
-            <option value="Melbourne">Melbourne only</option>
-          </select>
-          <button class="btn btn-outline" onclick="exportPsCsv()">⬇ Export CSV</button>
-        </div>
+        <h3 style="margin:0;"><span class="icon">📋</span>Darwin SMSF property records — FY <span id="psd-fy-label"></span></h3>
+        <button class="btn btn-outline" onclick="exportPsCsv('Darwin')">⬇ Export CSV</button>
       </div>
-      <div id="ps-table-wrap"></div>
+      <div id="psd-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- SMSF INVESTMENT PROPERTY — MELBOURNE -->
+  <div class="view" id="view-ps-melbourne">
+    <div class="cards-row">
+      <div class="card c-teal">
+        <div class="k">Total Income (this FY)</div>
+        <div class="v" id="psm-stat-income">$0</div>
+        <div class="sub">Super contributions + rental</div>
+      </div>
+      <div class="card c-coral">
+        <div class="k">Total Expenses</div>
+        <div class="v" id="psm-stat-expenses">$0</div>
+        <div class="sub">Loan + other expenses</div>
+      </div>
+      <div class="card c-navy">
+        <div class="k">Net result</div>
+        <div class="v" id="psm-stat-net">$0</div>
+        <div class="sub" id="psm-stat-net-sub">Income minus expenses</div>
+      </div>
+      <div class="card c-gold">
+        <div class="k">Entries logged</div>
+        <div class="v" id="psm-stat-count">0</div>
+        <div class="sub">this financial year</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3><span class="icon">🏦</span>Log a period's figures — Melbourne</h3>
+        <form id="psm-form" onsubmit="return addPsEntry(event, 'Melbourne')">
+          <div class="field" style="margin-bottom:12px;">
+            <label>Financial year</label>
+            <input type="text" id="psm-fy-display" disabled style="background:#eef1f6;color:var(--muted);cursor:not-allowed;">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Period type</label>
+            <select id="psm-period-type" onchange="onPsPeriodTypeChange('Melbourne')">
+              <option value="Month">Month</option>
+              <option value="Quarter">Quarter</option>
+              <option value="Year">Full Year</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;" id="psm-month-wrap">
+            <label>Month</label>
+            <select id="psm-month" onchange="updatePsFyDisplay('Melbourne')"></select>
+          </div>
+          <div class="field" style="margin-bottom:12px;display:none;" id="psm-quarter-wrap">
+            <label>Quarter</label>
+            <select id="psm-quarter">
+              <option value="1">Quarter 1</option>
+              <option value="2">Quarter 2</option>
+              <option value="3">Quarter 3</option>
+              <option value="4">Quarter 4</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Sandeep's Super Contribution</label>
+            <input type="number" id="psm-sandeep-super" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Neetha's Super Contribution</label>
+            <input type="number" id="psm-neetha-super" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Rental Income</label>
+            <input type="number" id="psm-rental" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Loan (per statement)</label>
+            <input type="number" id="psm-loan" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Other expenses</label>
+            <input type="number" id="psm-other" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Notes (optional)</label>
+            <input type="text" id="psm-notes" placeholder="e.g. figures from SMSF bank + loan statements">
+          </div>
+          <button type="submit" id="psm-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3><span class="icon">📊</span>Expense breakdown</h3>
+        <canvas id="chart-psm" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <h3 style="margin:0;"><span class="icon">📋</span>Melbourne SMSF property records — FY <span id="psm-fy-label"></span></h3>
+        <button class="btn btn-outline" onclick="exportPsCsv('Melbourne')">⬇ Export CSV</button>
+      </div>
+      <div id="psm-table-wrap"></div>
     </div>
   </div>
 
@@ -953,8 +1034,10 @@ function connectFirestore(){
     (snapshot) => {
       psEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       populateFyDropdown();
-      renderPsDashboard();
-      renderPsRecords();
+      renderPsDashboard('Darwin');
+      renderPsRecords('Darwin');
+      renderPsDashboard('Melbourne');
+      renderPsRecords('Melbourne');
     },
     (err) => {
       console.error('Firestore SMSF property error:', err);
@@ -1015,9 +1098,11 @@ function onFyChange(){
   syncMonthToSelectedFy();
   renderPropertyDashboard();
   renderPropertyRecords();
-  syncPsMonthToSelectedFy();
-  renderPsDashboard();
-  renderPsRecords();
+  ['Darwin','Melbourne'].forEach(property=>{
+    syncPsMonthToSelectedFy(property);
+    renderPsDashboard(property);
+    renderPsRecords(property);
+  });
 }
 
 /* ---------- Tabs ---------- */
@@ -1030,7 +1115,8 @@ function showView(name){
   if(name==='records') renderRecords();
   if(name==='accountant') renderAccountant();
   if(name==='property'){ syncMonthToSelectedFy(); renderPropertyDashboard(); renderPropertyRecords(); }
-  if(name==='property-super'){ syncPsMonthToSelectedFy(); renderPsDashboard(); renderPsRecords(); }
+  if(name==='ps-darwin'){ syncPsMonthToSelectedFy('Darwin'); renderPsDashboard('Darwin'); renderPsRecords('Darwin'); }
+  if(name==='ps-melbourne'){ syncPsMonthToSelectedFy('Melbourne'); renderPsDashboard('Melbourne'); renderPsRecords('Melbourne'); }
 }
 
 /* ---------- Receipt photo handling (compressed, stored inline in Firestore) ---------- */
@@ -1252,30 +1338,35 @@ function onPeriodTypeChange(){
   updatePropertyFyDisplay();
 }
 
-// Same pattern as above, mirrored for the SMSF property tab (ps- prefixed fields).
-function syncPsMonthToSelectedFy(){
-  buildMonthYearOptions(`Jul ${selectedFy - 1}`, 'ps-month');
-  updatePsFyDisplay();
+// Same pattern as above, mirrored for the two single-property SMSF tabs (psd-/psm- prefixed fields).
+const PS_PREFIX = { Darwin: 'psd', Melbourne: 'psm' };
+function psId(property, suffix){
+  return `${PS_PREFIX[property]}-${suffix}`;
 }
 
-function updatePsFyDisplay(){
-  const el = document.getElementById('ps-fy-display');
+function syncPsMonthToSelectedFy(property){
+  buildMonthYearOptions(`Jul ${selectedFy - 1}`, psId(property, 'month'));
+  updatePsFyDisplay(property);
+}
+
+function updatePsFyDisplay(property){
+  const el = document.getElementById(psId(property, 'fy-display'));
   if(!el) return;
-  const type = document.getElementById('ps-period-type').value;
+  const type = document.getElementById(psId(property, 'period-type')).value;
   let fy = selectedFy;
   if(type === 'Month'){
-    const val = document.getElementById('ps-month').value;
+    const val = document.getElementById(psId(property, 'month')).value;
     const [mon, yearStr] = val.split(' ');
     if(mon && yearStr) fy = monthYearToFy(mon, parseInt(yearStr,10));
   }
   el.value = fyLabel(fy);
 }
 
-function onPsPeriodTypeChange(){
-  const type = document.getElementById('ps-period-type').value;
-  document.getElementById('ps-month-wrap').style.display = type === 'Month' ? 'block' : 'none';
-  document.getElementById('ps-quarter-wrap').style.display = type === 'Quarter' ? 'block' : 'none';
-  updatePsFyDisplay();
+function onPsPeriodTypeChange(property){
+  const type = document.getElementById(psId(property, 'period-type')).value;
+  document.getElementById(psId(property, 'month-wrap')).style.display = type === 'Month' ? 'block' : 'none';
+  document.getElementById(psId(property, 'quarter-wrap')).style.display = type === 'Quarter' ? 'block' : 'none';
+  updatePsFyDisplay(property);
 }
 
 function periodLabel(e){
@@ -1351,23 +1442,22 @@ function toggleApprovePropertyEntry(id, currentlyApproved){
     .catch(err=>toast('Could not update: ' + err.message));
 }
 
-/* ---------- SMSF Investment Property (Darwin / Melbourne) ---------- */
-function addPsEntry(e){
+/* ---------- SMSF Investment Property (separate Darwin / Melbourne tabs, shared collection) ---------- */
+function addPsEntry(e, property){
   e.preventDefault();
-  const btn = document.getElementById('ps-submit-btn');
-  const property = document.getElementById('ps-property').value;
-  const notes = document.getElementById('ps-notes').value.trim();
-  const periodType = document.getElementById('ps-period-type').value;
+  const btn = document.getElementById(psId(property, 'submit-btn'));
+  const notes = document.getElementById(psId(property, 'notes')).value.trim();
+  const periodType = document.getElementById(psId(property, 'period-type')).value;
 
   let periodValue, fy;
   if(periodType === 'Quarter'){
-    periodValue = document.getElementById('ps-quarter').value;
+    periodValue = document.getElementById(psId(property, 'quarter')).value;
     fy = selectedFy;
   } else if(periodType === 'Year'){
     periodValue = 'Full Year';
     fy = selectedFy;
   } else {
-    periodValue = document.getElementById('ps-month').value; // e.g. "Jul 2024"
+    periodValue = document.getElementById(psId(property, 'month')).value; // e.g. "Jul 2024"
     const [mon, yearStr] = periodValue.split(' ');
     fy = monthYearToFy(mon, parseInt(yearStr,10));
   }
@@ -1375,11 +1465,11 @@ function addPsEntry(e){
   const payload = {
     property, fy,
     periodType, periodValue, notes,
-    sandeepSuper: parseFloat(document.getElementById('ps-sandeep-super').value) || 0,
-    neethaSuper: parseFloat(document.getElementById('ps-neetha-super').value) || 0,
-    rental: parseFloat(document.getElementById('ps-rental').value) || 0,
-    loan: parseFloat(document.getElementById('ps-loan').value) || 0,
-    other: parseFloat(document.getElementById('ps-other').value) || 0,
+    sandeepSuper: parseFloat(document.getElementById(psId(property, 'sandeep-super')).value) || 0,
+    neethaSuper: parseFloat(document.getElementById(psId(property, 'neetha-super')).value) || 0,
+    rental: parseFloat(document.getElementById(psId(property, 'rental')).value) || 0,
+    loan: parseFloat(document.getElementById(psId(property, 'loan')).value) || 0,
+    other: parseFloat(document.getElementById(psId(property, 'other')).value) || 0,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -1388,9 +1478,8 @@ function addPsEntry(e){
 
   db.collection(PS_COLLECTION).add(payload).then(() => {
     e.target.reset();
-    document.getElementById('ps-property').value = property;
-    syncPsMonthToSelectedFy();
-    onPsPeriodTypeChange();
+    syncPsMonthToSelectedFy(property);
+    onPsPeriodTypeChange(property);
     toast('Entry saved ✓ — synced for both of you');
   }).catch(err => {
     toast('Could not save: ' + err.message);
@@ -1414,14 +1503,12 @@ function toggleApprovePsEntry(id, currentlyApproved){
     .catch(err=>toast('Could not update: ' + err.message));
 }
 
-function psEntriesForFy(fy){
-  const propertyFilterEl = document.getElementById('ps-filter-property');
-  const propertyFilter = propertyFilterEl ? propertyFilterEl.value : '';
-  return psEntries.filter(e=>psEntryFy(e)===fy && (!propertyFilter || e.property===propertyFilter));
+function psEntriesForFy(fy, property){
+  return psEntries.filter(e=>psEntryFy(e)===fy && e.property===property);
 }
 
-function psTotals(fy){
-  const list = psEntriesForFy(fy);
+function psTotals(fy, property){
+  const list = psEntriesForFy(fy, property);
   let sandeepSuper = 0, neethaSuper = 0, rental = 0, loan = 0, other = 0;
   list.forEach(e=>{
     sandeepSuper += e.sandeepSuper || 0;
@@ -1433,18 +1520,6 @@ function psTotals(fy){
   const income = sandeepSuper + neethaSuper + rental;
   const totalExpenses = loan + other;
   return { sandeepSuper, neethaSuper, rental, loan, other, income, totalExpenses, net: income - totalExpenses, count: list.length };
-}
-
-// Always compares both properties for the FY, ignoring the property filter — used for the Darwin vs Melbourne chart.
-function psPropertyCompare(fy){
-  const list = psEntries.filter(e=>psEntryFy(e)===fy);
-  const result = { Darwin: 0, Melbourne: 0 };
-  list.forEach(e=>{
-    const income = (e.sandeepSuper||0) + (e.neethaSuper||0) + (e.rental||0);
-    const exp = (e.loan||0) + (e.other||0);
-    if(result[e.property] !== undefined) result[e.property] += (income - exp);
-  });
-  return result;
 }
 
 /* ---------- Edit Investment Property entry ---------- */
@@ -1736,93 +1811,72 @@ function exportPropertyCsv(){
   downloadCsv(toCsv(rows), `investment_property_FY${selectedFy}.csv`);
 }
 
-/* ---------- SMSF Investment Property dashboard + records ---------- */
-let chartPs, chartPsCompare;
+/* ---------- SMSF Investment Property dashboard + records (per-property) ---------- */
+let chartPs = { Darwin: null, Melbourne: null };
 
-function renderPsDashboard(){
-  const t = psTotals(selectedFy);
-  document.getElementById('ps-stat-income').textContent = fmt(t.income);
-  document.getElementById('ps-stat-expenses').textContent = fmt(t.totalExpenses);
-  const netEl = document.getElementById('ps-stat-net');
+function renderPsDashboard(property){
+  const t = psTotals(selectedFy, property);
+  document.getElementById(psId(property, 'stat-income')).textContent = fmt(t.income);
+  document.getElementById(psId(property, 'stat-expenses')).textContent = fmt(t.totalExpenses);
+  const netEl = document.getElementById(psId(property, 'stat-net'));
   netEl.textContent = fmt(t.net);
-  const netSub = document.getElementById('ps-stat-net-sub');
+  const netSub = document.getElementById(psId(property, 'stat-net-sub'));
   netSub.textContent = t.net >= 0 ? 'Net profit' : 'Net loss';
-  document.getElementById('ps-stat-count').textContent = t.count;
+  document.getElementById(psId(property, 'stat-count')).textContent = t.count;
 
   const expenseCats = { 'Loan': t.loan, 'Other Expenses': t.other };
   const sortedCats = Object.entries(expenseCats).filter(c=>c[1]>0).sort((a,b)=>b[1]-a[1]);
-  const ctx = document.getElementById('chart-ps');
-  if(chartPs) chartPs.destroy();
+  const ctx = document.getElementById(`chart-${PS_PREFIX[property]}`);
+  if(chartPs[property]) chartPs[property].destroy();
   if(sortedCats.length){
-    chartPs = new Chart(ctx, {
+    chartPs[property] = new Chart(ctx, {
       type:'doughnut',
       data:{
         labels: sortedCats.map(c=>c[0]),
-        datasets:[{ data: sortedCats.map(c=>c[1]), backgroundColor:['#ef6a5a','#f5b942','#0fb5ae','#12233f'] }]
+        datasets:[{ data: sortedCats.map(c=>c[1]), backgroundColor:['#ef6a5a','#f5b942'] }]
       },
       options:{plugins:{legend:{position:'right', labels:{boxWidth:12,font:{size:11}}}}}
     });
   }
-
-  const compare = psPropertyCompare(selectedFy);
-  const cmpCtx = document.getElementById('chart-ps-compare');
-  if(chartPsCompare) chartPsCompare.destroy();
-  chartPsCompare = new Chart(cmpCtx, {
-    type:'bar',
-    data:{
-      labels:['Darwin','Melbourne'],
-      datasets:[{
-        data:[compare.Darwin, compare.Melbourne],
-        backgroundColor:[compare.Darwin>=0?'#1fa87a':'#ef6a5a', compare.Melbourne>=0?'#1fa87a':'#ef6a5a'],
-        borderRadius:6
-      }]
-    },
-    options:{
-      plugins:{legend:{display:false}},
-      scales:{y:{ticks:{callback:v=>fmt(v)}}}
-    }
-  });
 }
 
-let psSortField = 'chrono';
-let psSortDir = 'desc';
-function sortPsBy(field){
-  if(psSortField === field){
-    psSortDir = psSortDir === 'asc' ? 'desc' : 'asc';
+let psSortField = { Darwin: 'chrono', Melbourne: 'chrono' };
+let psSortDir = { Darwin: 'desc', Melbourne: 'desc' };
+function sortPsBy(property, field){
+  if(psSortField[property] === field){
+    psSortDir[property] = psSortDir[property] === 'asc' ? 'desc' : 'asc';
   } else {
-    psSortField = field;
-    psSortDir = 'asc';
+    psSortField[property] = field;
+    psSortDir[property] = 'asc';
   }
-  renderPsRecords();
+  renderPsRecords(property);
 }
-function psSortArrow(field){
-  if(psSortField !== field) return '';
-  return psSortDir === 'asc' ? ' ▲' : ' ▼';
+function psSortArrow(property, field){
+  if(psSortField[property] !== field) return '';
+  return psSortDir[property] === 'asc' ? ' ▲' : ' ▼';
 }
 
-function renderPsRecords(){
-  document.getElementById('ps-fy-label').textContent = selectedFy;
-  const list = psEntriesForFy(selectedFy).slice();
-  const dir = psSortDir === 'asc' ? 1 : -1;
+function renderPsRecords(property){
+  document.getElementById(psId(property, 'fy-label')).textContent = selectedFy;
+  const list = psEntriesForFy(selectedFy, property).slice();
+  const dir = psSortDir[property] === 'asc' ? 1 : -1;
   list.sort((a,b)=>{
     let cmp;
-    if(psSortField === 'property') cmp = (a.property||'').localeCompare(b.property||'');
-    else if(psSortField === 'periodType') cmp = (a.periodType||'').localeCompare(b.periodType||'');
-    else if(psSortField === 'period') cmp = periodLabel(a).localeCompare(periodLabel(b));
+    if(psSortField[property] === 'periodType') cmp = (a.periodType||'').localeCompare(b.periodType||'');
+    else if(psSortField[property] === 'period') cmp = periodLabel(a).localeCompare(periodLabel(b));
     else cmp = periodSortKey(a) - periodSortKey(b);
     return cmp * dir;
   });
-  const wrap = document.getElementById('ps-table-wrap');
+  const wrap = document.getElementById(psId(property, 'table-wrap'));
   if(list.length===0){
-    wrap.innerHTML = '<div class="empty"><div class="big">🏦</div>No SMSF investment property entries for this financial year yet.</div>';
+    wrap.innerHTML = `<div class="empty"><div class="big">🏦</div>No ${property} SMSF property entries for this financial year yet.</div>`;
     return;
   }
   wrap.innerHTML = `
     <table>
       <thead><tr>
-        <th style="cursor:pointer;" onclick="sortPsBy('property')">Property${psSortArrow('property')}</th>
-        <th style="cursor:pointer;" onclick="sortPsBy('periodType')">Period Type${psSortArrow('periodType')}</th>
-        <th style="cursor:pointer;" onclick="sortPsBy('period')">Period${psSortArrow('period')}</th>
+        <th style="cursor:pointer;" onclick="sortPsBy('${property}','periodType')">Period Type${psSortArrow(property,'periodType')}</th>
+        <th style="cursor:pointer;" onclick="sortPsBy('${property}','period')">Period${psSortArrow(property,'period')}</th>
         <th>Sandeep Super</th><th>Neetha Super</th><th>Rental Income</th><th>Loan</th><th>Other</th><th>Net</th><th>Notes</th><th>Approval</th><th></th>
       </tr></thead>
       <tbody>
@@ -1831,10 +1885,8 @@ function renderPsRecords(){
           const totalExp = (e.loan||0)+(e.other||0);
           const net = income - totalExp;
           const approved = !!e.approved;
-          const propClass = e.property==='Darwin' ? 'darwin' : 'melbourne';
           return `
           <tr class="${approved ? 'row-approved' : ''}">
-            <td><span class="property-tag ${propClass}">${e.property||''}</span></td>
             <td><span class="badge">${e.periodType||''}</span></td>
             <td><span class="freq-tag">${periodLabel(e)}</span></td>
             <td>${fmt(e.sandeepSuper||0)}</td>
@@ -1853,8 +1905,8 @@ function renderPsRecords(){
   `;
 }
 
-function exportPsCsv(){
-  const list = psEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
+function exportPsCsv(property){
+  const list = psEntriesForFy(selectedFy, property).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
   const rows = [['Property','Financial Year','Period Type','Period','Sandeep Super','Neetha Super','Rental Income','Loan','Other Expenses','Net','Notes']];
   list.forEach(e=>{
     const income = (e.sandeepSuper||0)+(e.neethaSuper||0)+(e.rental||0);
@@ -1862,7 +1914,7 @@ function exportPsCsv(){
     const net = income - totalExp;
     rows.push([e.property||'', fyLabel(psEntryFy(e)), e.periodType||'', periodLabel(e), (e.sandeepSuper||0).toFixed(2), (e.neethaSuper||0).toFixed(2), (e.rental||0).toFixed(2), (e.loan||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
   });
-  downloadCsv(toCsv(rows), `investment_property_super_FY${selectedFy}.csv`);
+  downloadCsv(toCsv(rows), `investment_property_super_${property}_FY${selectedFy}.csv`);
 }
 
 /* ---------- Derived data ---------- */
@@ -2165,8 +2217,10 @@ function init(){
   populateFyDropdown();
   syncMonthToSelectedFy();
   onPeriodTypeChange();
-  syncPsMonthToSelectedFy();
-  onPsPeriodTypeChange();
+  ['Darwin','Melbourne'].forEach(property=>{
+    syncPsMonthToSelectedFy(property);
+    onPsPeriodTypeChange(property);
+  });
   connectFirestore();
 }
 init();

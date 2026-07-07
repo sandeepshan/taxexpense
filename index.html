@@ -606,6 +606,63 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="edit-property-modal" onclick="closeEditPropertyModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3>✏️ Edit investment property entry</h3>
+    <form id="edit-property-form" onsubmit="return saveEditPropertyEntry(event)">
+      <div class="field">
+        <label>Period type</label>
+        <select id="edit-p-period-type" onchange="onEditPeriodTypeChange()" required>
+          <option value="Month">Month</option>
+          <option value="Quarter">Quarter</option>
+          <option value="Year">Full Year</option>
+        </select>
+      </div>
+      <div class="field" id="edit-p-month-wrap">
+        <label>Month</label>
+        <select id="edit-p-month"></select>
+      </div>
+      <div class="field" style="display:none;" id="edit-p-quarter-wrap">
+        <label>Quarter</label>
+        <select id="edit-p-quarter">
+          <option value="1">Quarter 1</option>
+          <option value="2">Quarter 2</option>
+          <option value="3">Quarter 3</option>
+          <option value="4">Quarter 4</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Rental Income</label>
+        <input type="number" id="edit-p-rental" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Bank Interest</label>
+        <input type="number" id="edit-p-interest" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Council Bill</label>
+        <input type="number" id="edit-p-council" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Landlord Insurance</label>
+        <input type="number" id="edit-p-insurance" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Other Expenses</label>
+        <input type="number" id="edit-p-other" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="edit-p-notes" rows="3" style="width:100%;padding:10px;border-radius:8px;border:1px solid #d8dee8;font-family:inherit;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeEditPropertyModal()">Cancel</button>
+        <button type="submit" class="btn btn-teal" id="edit-property-save-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 /* ---------- Firebase setup ---------- */
 const firebaseConfig = {
@@ -913,8 +970,8 @@ function monthYearToFy(monthAbbr, year){
   return (idx >= 6) ? (year+1) : year; // Jul-Dec belongs to the FY ending the following June
 }
 
-function buildMonthYearOptions(preferredLabel){
-  const sel = document.getElementById('p-month');
+function buildMonthYearOptions(preferredLabel, selectId){
+  const sel = document.getElementById(selectId || 'p-month');
   if(!sel) return;
   const now = new Date();
   const curYear = now.getFullYear();
@@ -1025,6 +1082,88 @@ function deletePropertyEntry(id){
     .catch(err=>toast('Could not delete: ' + err.message));
 }
 
+/* ---------- Edit Investment Property entry ---------- */
+let editingPropertyId = null;
+
+function onEditPeriodTypeChange(){
+  const type = document.getElementById('edit-p-period-type').value;
+  document.getElementById('edit-p-month-wrap').style.display = type === 'Month' ? 'block' : 'none';
+  document.getElementById('edit-p-quarter-wrap').style.display = type === 'Quarter' ? 'block' : 'none';
+}
+
+function openEditPropertyModal(id){
+  const entry = propertyEntries.find(e=>e.id===id);
+  if(!entry) return;
+  editingPropertyId = id;
+
+  const type = entry.periodType || 'Month';
+  document.getElementById('edit-p-period-type').value = type;
+  buildMonthYearOptions(type === 'Month' ? entry.periodValue : null, 'edit-p-month');
+  if(type === 'Quarter'){
+    document.getElementById('edit-p-quarter').value = entry.periodValue || '1';
+  }
+  onEditPeriodTypeChange();
+
+  document.getElementById('edit-p-rental').value = entry.rental || 0;
+  document.getElementById('edit-p-interest').value = entry.interest || 0;
+  document.getElementById('edit-p-council').value = entry.council || 0;
+  document.getElementById('edit-p-insurance').value = entry.insurance || 0;
+  document.getElementById('edit-p-other').value = entry.other || 0;
+  document.getElementById('edit-p-notes').value = entry.notes || '';
+
+  document.getElementById('edit-property-modal').classList.add('show');
+}
+
+function closeEditPropertyModal(){
+  document.getElementById('edit-property-modal').classList.remove('show');
+  editingPropertyId = null;
+}
+
+function saveEditPropertyEntry(e){
+  e.preventDefault();
+  if(!editingPropertyId) return false;
+  const btn = document.getElementById('edit-property-save-btn');
+  const periodType = document.getElementById('edit-p-period-type').value;
+
+  let periodValue, fy;
+  if(periodType === 'Quarter'){
+    periodValue = document.getElementById('edit-p-quarter').value;
+    fy = selectedFy;
+  } else if(periodType === 'Year'){
+    periodValue = 'Full Year';
+    fy = selectedFy;
+  } else {
+    periodValue = document.getElementById('edit-p-month').value;
+    const [mon, yearStr] = periodValue.split(' ');
+    fy = monthYearToFy(mon, parseInt(yearStr,10));
+  }
+
+  const payload = {
+    fy,
+    periodType, periodValue,
+    notes: document.getElementById('edit-p-notes').value.trim(),
+    rental: parseFloat(document.getElementById('edit-p-rental').value) || 0,
+    interest: parseFloat(document.getElementById('edit-p-interest').value) || 0,
+    council: parseFloat(document.getElementById('edit-p-council').value) || 0,
+    insurance: parseFloat(document.getElementById('edit-p-insurance').value) || 0,
+    other: parseFloat(document.getElementById('edit-p-other').value) || 0
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  db.collection(PROPERTY_COLLECTION).doc(editingPropertyId).update(payload).then(() => {
+    closeEditPropertyModal();
+    toast('Entry updated ✓ — synced for both of you');
+  }).catch(err => {
+    toast('Could not save: ' + err.message);
+  }).finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+  });
+  return false;
+}
+
 function propertyEntriesForFy(fy){
   return propertyEntries.filter(e=>propertyEntryFy(e)===fy);
 }
@@ -1072,9 +1211,33 @@ function renderPropertyDashboard(){
   }
 }
 
+let propertySortField = 'chrono';
+let propertySortDir = 'desc';
+function sortPropertyBy(field){
+  if(propertySortField === field){
+    propertySortDir = propertySortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    propertySortField = field;
+    propertySortDir = 'asc';
+  }
+  renderPropertyRecords();
+}
+function propertySortArrow(field){
+  if(propertySortField !== field) return '';
+  return propertySortDir === 'asc' ? ' ▲' : ' ▼';
+}
+
 function renderPropertyRecords(){
   document.getElementById('property-fy-label').textContent = selectedFy;
-  const list = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(b)-periodSortKey(a));
+  const list = propertyEntriesForFy(selectedFy).slice();
+  const dir = propertySortDir === 'asc' ? 1 : -1;
+  list.sort((a,b)=>{
+    let cmp;
+    if(propertySortField === 'periodType') cmp = (a.periodType||'').localeCompare(b.periodType||'');
+    else if(propertySortField === 'period') cmp = periodLabel(a).localeCompare(periodLabel(b));
+    else cmp = periodSortKey(a) - periodSortKey(b);
+    return cmp * dir;
+  });
   const wrap = document.getElementById('property-table-wrap');
   if(list.length===0){
     wrap.innerHTML = '<div class="empty"><div class="big">🏘️</div>No investment property entries for this financial year yet.</div>';
@@ -1083,7 +1246,9 @@ function renderPropertyRecords(){
   wrap.innerHTML = `
     <table>
       <thead><tr>
-        <th>Period</th><th>Rental Income</th><th>Bank Interest</th><th>Council Bill</th><th>Landlord Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th></th>
+        <th style="cursor:pointer;" onclick="sortPropertyBy('periodType')">Period Type${propertySortArrow('periodType')}</th>
+        <th style="cursor:pointer;" onclick="sortPropertyBy('period')">Period${propertySortArrow('period')}</th>
+        <th>Rental Income</th><th>Bank Interest</th><th>Council Bill</th><th>Landlord Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(e=>{
@@ -1091,6 +1256,7 @@ function renderPropertyRecords(){
           const net = (e.rental||0) - totalExp;
           return `
           <tr>
+            <td><span class="badge">${e.periodType||''}</span></td>
             <td><span class="freq-tag">${periodLabel(e)}</span></td>
             <td>${fmt(e.rental||0)}</td>
             <td>${fmt(e.interest||0)}</td>
@@ -1099,7 +1265,7 @@ function renderPropertyRecords(){
             <td>${fmt(e.other||0)}</td>
             <td><strong style="color:${net>=0?'var(--good)':'var(--coral)'}">${fmt(net)}</strong></td>
             <td>${e.notes || ''}</td>
-            <td class="row-actions"><button onclick="deletePropertyEntry('${e.id}')">🗑️</button></td>
+            <td class="row-actions"><button onclick="openEditPropertyModal('${e.id}')" title="Edit">✏️</button><button onclick="deletePropertyEntry('${e.id}')" title="Delete">🗑️</button></td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -1109,11 +1275,11 @@ function renderPropertyRecords(){
 
 function exportPropertyCsv(){
   const list = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
-  const rows = [['Financial Year','Period','Rental Income','Bank Interest','Council Bill','Landlord Insurance','Other Expenses','Net','Notes']];
+  const rows = [['Financial Year','Period Type','Period','Rental Income','Bank Interest','Council Bill','Landlord Insurance','Other Expenses','Net','Notes']];
   list.forEach(e=>{
     const totalExp = (e.interest||0)+(e.council||0)+(e.insurance||0)+(e.other||0);
     const net = (e.rental||0) - totalExp;
-    rows.push([fyLabel(propertyEntryFy(e)), periodLabel(e), (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
+    rows.push([fyLabel(propertyEntryFy(e)), e.periodType||'', periodLabel(e), (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
   });
   downloadCsv(toCsv(rows), `investment_property_FY${selectedFy}.csv`);
 }
@@ -1254,14 +1420,39 @@ function renderDashboard(){
   });
 }
 
+let recordsSortField = 'date';
+let recordsSortDir = 'desc';
+function sortRecordsBy(field){
+  if(recordsSortField === field){
+    recordsSortDir = recordsSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    recordsSortField = field;
+    recordsSortDir = 'asc';
+  }
+  renderRecords();
+}
+function sortArrow(field){
+  if(recordsSortField !== field) return '';
+  return recordsSortDir === 'asc' ? ' ▲' : ' ▼';
+}
+
 function renderRecords(){
   const personFilter = document.getElementById('filter-person').value;
   const catFilter = document.getElementById('filter-category').value;
   const search = document.getElementById('filter-search').value.toLowerCase();
-  let list = expensesForFy(selectedFy).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  let list = expensesForFy(selectedFy).slice();
   if(personFilter) list = list.filter(e=>e.person===personFilter);
   if(catFilter) list = list.filter(e=>e.category===catFilter);
   if(search) list = list.filter(e=> e.type.toLowerCase().includes(search) || e.org.toLowerCase().includes(search));
+
+  const dir = recordsSortDir === 'asc' ? 1 : -1;
+  list.sort((a,b)=>{
+    let cmp;
+    if(recordsSortField === 'person') cmp = a.person.localeCompare(b.person);
+    else if(recordsSortField === 'category') cmp = a.category.localeCompare(b.category);
+    else cmp = a.date.localeCompare(b.date);
+    return cmp * dir;
+  });
 
   const wrap = document.getElementById('records-table-wrap');
   if(list.length===0){
@@ -1271,7 +1462,10 @@ function renderRecords(){
   wrap.innerHTML = `
     <table>
       <thead><tr>
-        <th>Date</th><th>Person</th><th>Category</th><th>Type</th><th>Organisation</th><th>Frequency</th><th>Amount</th><th>Annual value</th><th>Receipt</th><th></th>
+        <th>Date</th>
+        <th style="cursor:pointer;" onclick="sortRecordsBy('person')">Person${sortArrow('person')}</th>
+        <th style="cursor:pointer;" onclick="sortRecordsBy('category')">Category${sortArrow('category')}</th>
+        <th>Type</th><th>Organisation</th><th>Frequency</th><th>Amount</th><th>Annual value</th><th>Receipt</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(e=>`

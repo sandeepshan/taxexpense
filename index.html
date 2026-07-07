@@ -231,6 +231,29 @@
   .lightbox-close{
     position:absolute;top:20px;right:26px;color:#fff;font-size:30px;background:none;border:none;cursor:pointer;
   }
+
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(10,15,25,0.55);z-index:200;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-box{
+    background:#fff;border-radius:14px;padding:24px;width:100%;max-width:480px;
+    max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-box h3{margin:0 0 16px;color:var(--navy);}
+  .modal-box .field{margin-bottom:12px;}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;}
+  .modal-actions button{flex:1;}
+
+  .expand-btn{
+    border:none;background:#eef1f6;color:var(--navy);width:22px;height:22px;border-radius:6px;
+    cursor:pointer;font-size:13px;font-weight:700;line-height:1;
+  }
+  .expand-btn:hover{background:var(--teal);color:#fff;}
+  .accountant-subrow td{background:#fafcfe;font-size:12.5px;color:var(--muted);}
+  .accountant-subrow .sub-table{width:100%;border-collapse:collapse;}
+  .accountant-subrow .sub-table td{padding:5px 8px;border-bottom:1px dashed var(--border);color:var(--text);}
 </style>
 </head>
 <body>
@@ -256,6 +279,7 @@
   <button class="tab-btn active" data-view="dashboard" onclick="showView('dashboard')">📊 Dashboard</button>
   <button class="tab-btn" data-view="add" onclick="showView('add')">➕ Add Expense</button>
   <button class="tab-btn" data-view="records" onclick="showView('records')">📋 All Records</button>
+  <button class="tab-btn" data-view="property" onclick="showView('property')">🏘️ Investment Property</button>
   <button class="tab-btn" data-view="accountant" onclick="showView('accountant')">🧾 For Accountant</button>
 </nav>
 
@@ -396,19 +420,99 @@
     </div>
   </div>
 
+  <!-- INVESTMENT PROPERTY -->
+  <div class="view" id="view-property">
+    <div class="cards-row">
+      <div class="card c-teal">
+        <div class="k">Rental income (this FY)</div>
+        <div class="v" id="prop-stat-income">$0</div>
+        <div class="sub">Gross rent received</div>
+      </div>
+      <div class="card c-coral">
+        <div class="k">Deductible expenses</div>
+        <div class="v" id="prop-stat-expenses">$0</div>
+        <div class="sub">Fees, rates, interest, etc.</div>
+      </div>
+      <div class="card c-navy">
+        <div class="k">Net rental result</div>
+        <div class="v" id="prop-stat-net">$0</div>
+        <div class="sub" id="prop-stat-net-sub">Income minus expenses</div>
+      </div>
+      <div class="card c-gold">
+        <div class="k">Entries logged</div>
+        <div class="v" id="prop-stat-count">0</div>
+        <div class="sub">this financial year</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3><span class="icon">🏘️</span>Log a period's figures</h3>
+        <form id="property-form" onsubmit="return addPropertyEntry(event)">
+          <div class="field" style="margin-bottom:12px;">
+            <label>Date (period this covers)</label>
+            <input type="date" id="p-date" required>
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Total rental received (income)</label>
+            <input type="number" id="p-rental" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Total loan interest paid (expense)</label>
+            <input type="number" id="p-interest" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Council rates (expense)</label>
+            <input type="number" id="p-council" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Landlord insurance (expense)</label>
+            <input type="number" id="p-insurance" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Other expenses (repairs, agent fees, body corporate, etc.)</label>
+            <input type="number" id="p-other" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Notes (optional)</label>
+            <input type="text" id="p-notes" placeholder="e.g. Q2 figures from bank + agent statements">
+          </div>
+          <button type="submit" id="property-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3><span class="icon">📊</span>Expense breakdown</h3>
+        <canvas id="chart-property" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <h3 style="margin:0;"><span class="icon">📋</span>Investment property records — FY <span id="property-fy-label"></span></h3>
+        <button class="btn btn-outline" onclick="exportPropertyCsv()">⬇ Export CSV</button>
+      </div>
+      <div id="property-table-wrap"></div>
+    </div>
+  </div>
+
   <!-- ACCOUNTANT VIEW -->
   <div class="view" id="view-accountant">
     <div class="panel">
       <div class="toolbar">
         <h3 style="margin:0;"><span class="icon">🧾</span>Category totals — FY <span id="accountant-fy-label"></span></h3>
-        <div>
+        <div class="filters">
+          <select id="accountant-filter-person" onchange="renderAccountant()">
+            <option value="">Both people</option>
+            <option value="Sandeep">Sandeep only</option>
+            <option value="Neetha">Neetha only</option>
+          </select>
           <button class="btn btn-teal" onclick="exportAccountantCsv()">⬇ Export Summary for Accountant</button>
           <button class="btn btn-outline" onclick="window.print()">🖨 Print</button>
         </div>
       </div>
       <table class="accountant-table">
         <thead>
-          <tr><th>Category</th><th>Entries</th><th class="amt">Total (annualised)</th></tr>
+          <tr><th style="width:32px;"></th><th>Category</th><th>Entries</th><th class="amt">Total (annualised)</th></tr>
         </thead>
         <tbody id="accountant-body"></tbody>
       </table>
@@ -431,6 +535,56 @@
   <img id="lightbox-img" src="" onclick="event.stopPropagation()">
 </div>
 
+<div class="modal-overlay" id="edit-modal" onclick="closeEditModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3>✏️ Edit expense</h3>
+    <form id="edit-form" onsubmit="return saveEditExpense(event)">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="edit-date" required>
+      </div>
+      <div class="field">
+        <label>Person</label>
+        <select id="edit-person" required>
+          <option value="Sandeep">Sandeep</option>
+          <option value="Neetha">Neetha</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select id="edit-category" required></select>
+      </div>
+      <div class="field">
+        <label>Type / description</label>
+        <input type="text" id="edit-type" required>
+      </div>
+      <div class="field">
+        <label>Organisation / vendor</label>
+        <input type="text" id="edit-org" required>
+      </div>
+      <div class="field">
+        <label>Frequency</label>
+        <select id="edit-freq">
+          <option value="1">One-off</option>
+          <option value="52">Weekly</option>
+          <option value="26">Fortnightly</option>
+          <option value="12">Monthly</option>
+          <option value="4">Quarterly</option>
+          <option value="1">Annually</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Amount ($ per occurrence)</label>
+        <input type="number" id="edit-amount" step="0.01" min="0" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+        <button type="submit" class="btn btn-teal" id="edit-save-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 /* ---------- Firebase setup ---------- */
 const firebaseConfig = {
@@ -445,6 +599,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const COLLECTION = 'taxExpenses';
+const PROPERTY_COLLECTION = 'investmentProperty';
 
 /* ---------- Category list ---------- */
 const CATEGORIES = [
@@ -468,13 +623,17 @@ function iconFor(catName){
 function populateCategoryDropdowns(){
   const fSel = document.getElementById('f-category');
   const filterSel = document.getElementById('filter-category');
+  const editSel = document.getElementById('edit-category');
   fSel.innerHTML = CATEGORIES.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
   filterSel.innerHTML = `<option value="">All categories</option>` + CATEGORIES.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
+  editSel.innerHTML = CATEGORIES.map(c=>`<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
 }
 
 /* ---------- Live data store ---------- */
 let expenses = []; // synced from Firestore
+let propertyEntries = []; // synced from Firestore
 let unsubscribe = null;
+let unsubscribeProperty = null;
 
 function connectFirestore(){
   unsubscribe = db.collection(COLLECTION).onSnapshot(
@@ -487,6 +646,18 @@ function connectFirestore(){
     (err) => {
       console.error('Firestore error:', err);
       setSyncStatus(false, err.message);
+    }
+  );
+  unsubscribeProperty = db.collection(PROPERTY_COLLECTION).onSnapshot(
+    (snapshot) => {
+      propertyEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      populateFyDropdown();
+      renderPropertyDashboard();
+      renderPropertyRecords();
+    },
+    (err) => {
+      console.error('Firestore property error:', err);
+      toast('Could not sync investment property data: ' + err.message);
     }
   );
 }
@@ -522,6 +693,7 @@ let selectedFy = currentFy();
 function populateFyDropdown(){
   const sel = document.getElementById('fy-select');
   let fys = new Set(expenses.map(e=>fyOfDate(e.date)));
+  propertyEntries.forEach(e=>fys.add(fyOfDate(e.date)));
   fys.add(currentFy());
   fys.add(selectedFy);
   const sorted = Array.from(fys).sort((a,b)=>b-a);
@@ -531,6 +703,8 @@ function populateFyDropdown(){
 function onFyChange(){
   selectedFy = parseInt(document.getElementById('fy-select').value, 10);
   renderAll();
+  renderPropertyDashboard();
+  renderPropertyRecords();
 }
 
 /* ---------- Tabs ---------- */
@@ -542,6 +716,7 @@ function showView(name){
   if(name==='dashboard') renderDashboard();
   if(name==='records') renderRecords();
   if(name==='accountant') renderAccountant();
+  if(name==='property'){ renderPropertyDashboard(); renderPropertyRecords(); }
 }
 
 /* ---------- Receipt photo handling (compressed, stored inline in Firestore) ---------- */
@@ -649,14 +824,201 @@ function deleteExpense(id){
     .catch(err=>toast('Could not delete: ' + err.message));
 }
 
+/* ---------- Edit expense modal ---------- */
+let editingExpenseId = null;
+
+function openEditModal(id){
+  const exp = expenses.find(e=>e.id===id);
+  if(!exp) return;
+  editingExpenseId = id;
+  document.getElementById('edit-date').value = exp.date;
+  document.getElementById('edit-person').value = exp.person;
+  document.getElementById('edit-category').value = exp.category;
+  document.getElementById('edit-type').value = exp.type;
+  document.getElementById('edit-org').value = exp.org;
+  document.getElementById('edit-freq').value = exp.freq;
+  // handle the fact that One-off and Annually share value "1" — prefer matching by freqText
+  Array.from(document.getElementById('edit-freq').options).forEach(opt=>{
+    if(opt.text === exp.freqText) opt.selected = true;
+  });
+  document.getElementById('edit-amount').value = exp.amount;
+  document.getElementById('edit-modal').classList.add('show');
+}
+function closeEditModal(){
+  document.getElementById('edit-modal').classList.remove('show');
+  editingExpenseId = null;
+}
+function saveEditExpense(e){
+  e.preventDefault();
+  if(!editingExpenseId) return false;
+  const btn = document.getElementById('edit-save-btn');
+  const freqSel = document.getElementById('edit-freq');
+  const payload = {
+    date: document.getElementById('edit-date').value,
+    person: document.getElementById('edit-person').value,
+    category: document.getElementById('edit-category').value,
+    type: document.getElementById('edit-type').value.trim(),
+    org: document.getElementById('edit-org').value.trim(),
+    freq: parseInt(freqSel.value, 10),
+    freqText: freqSel.selectedOptions[0].text,
+    amount: parseFloat(document.getElementById('edit-amount').value)
+  };
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  db.collection(COLLECTION).doc(editingExpenseId).update(payload).then(()=>{
+    toast('Expense updated ✓');
+    closeEditModal();
+  }).catch(err=>{
+    toast('Could not update: ' + err.message);
+  }).finally(()=>{
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+  });
+  return false;
+}
+
+/* ---------- Investment Property ---------- */
+function addPropertyEntry(e){
+  e.preventDefault();
+  const btn = document.getElementById('property-submit-btn');
+  const date = document.getElementById('p-date').value;
+  const notes = document.getElementById('p-notes').value.trim();
+
+  const payload = {
+    date, notes,
+    rental: parseFloat(document.getElementById('p-rental').value) || 0,
+    interest: parseFloat(document.getElementById('p-interest').value) || 0,
+    council: parseFloat(document.getElementById('p-council').value) || 0,
+    insurance: parseFloat(document.getElementById('p-insurance').value) || 0,
+    other: parseFloat(document.getElementById('p-other').value) || 0,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  db.collection(PROPERTY_COLLECTION).add(payload).then(() => {
+    e.target.reset();
+    document.getElementById('p-date').value = new Date().toISOString().slice(0,10);
+    toast('Entry saved ✓ — synced for both of you');
+  }).catch(err => {
+    toast('Could not save: ' + err.message);
+  }).finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Save Entry';
+  });
+  return false;
+}
+
+function deletePropertyEntry(id){
+  if(!confirm('Delete this entry for both of you?')) return;
+  db.collection(PROPERTY_COLLECTION).doc(id).delete()
+    .then(()=>toast('Deleted'))
+    .catch(err=>toast('Could not delete: ' + err.message));
+}
+
+function propertyEntriesForFy(fy){
+  return propertyEntries.filter(e=>fyOfDate(e.date)===fy);
+}
+
+function propertyTotals(fy){
+  const list = propertyEntriesForFy(fy);
+  let income = 0;
+  const expenseCats = { 'Loan Interest':0, 'Council Rates':0, 'Landlord Insurance':0, 'Other Expenses':0 };
+  list.forEach(e=>{
+    income += e.rental || 0;
+    expenseCats['Loan Interest'] += e.interest || 0;
+    expenseCats['Council Rates'] += e.council || 0;
+    expenseCats['Landlord Insurance'] += e.insurance || 0;
+    expenseCats['Other Expenses'] += e.other || 0;
+  });
+  Object.keys(expenseCats).forEach(k => { if(expenseCats[k]===0) delete expenseCats[k]; });
+  const totalExpenses = Object.values(expenseCats).reduce((a,b)=>a+b,0);
+  return { income, expenseCats, totalExpenses, net: income - totalExpenses, count: list.length };
+}
+
+let chartProperty;
+
+function renderPropertyDashboard(){
+  const t = propertyTotals(selectedFy);
+  document.getElementById('prop-stat-income').textContent = fmt(t.income);
+  document.getElementById('prop-stat-expenses').textContent = fmt(t.totalExpenses);
+  const netEl = document.getElementById('prop-stat-net');
+  netEl.textContent = fmt(t.net);
+  const netSub = document.getElementById('prop-stat-net-sub');
+  netSub.textContent = t.net >= 0 ? 'Taxable rental profit' : 'Rental loss (negative gearing)';
+  document.getElementById('prop-stat-count').textContent = t.count;
+
+  const sortedCats = Object.entries(t.expenseCats).sort((a,b)=>b[1]-a[1]);
+  const ctx = document.getElementById('chart-property');
+  if(chartProperty) chartProperty.destroy();
+  if(sortedCats.length){
+    chartProperty = new Chart(ctx, {
+      type:'doughnut',
+      data:{
+        labels: sortedCats.map(c=>c[0]),
+        datasets:[{ data: sortedCats.map(c=>c[1]), backgroundColor:['#ef6a5a','#f5b942','#0fb5ae','#12233f','#6cc4c0','#f7cd76','#f29c8f','#4a6491','#8fd6d1'] }]
+      },
+      options:{plugins:{legend:{position:'right', labels:{boxWidth:12,font:{size:11}}}}}
+    });
+  }
+}
+
+function renderPropertyRecords(){
+  document.getElementById('property-fy-label').textContent = selectedFy;
+  const list = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const wrap = document.getElementById('property-table-wrap');
+  if(list.length===0){
+    wrap.innerHTML = '<div class="empty"><div class="big">🏘️</div>No investment property entries for this financial year yet.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Rental</th><th>Interest</th><th>Council</th><th>Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${list.map(e=>{
+          const totalExp = (e.interest||0)+(e.council||0)+(e.insurance||0)+(e.other||0);
+          const net = (e.rental||0) - totalExp;
+          return `
+          <tr>
+            <td>${e.date}</td>
+            <td>${fmt(e.rental||0)}</td>
+            <td>${fmt(e.interest||0)}</td>
+            <td>${fmt(e.council||0)}</td>
+            <td>${fmt(e.insurance||0)}</td>
+            <td>${fmt(e.other||0)}</td>
+            <td><strong style="color:${net>=0?'var(--good)':'var(--coral)'}">${fmt(net)}</strong></td>
+            <td>${e.notes || ''}</td>
+            <td class="row-actions"><button onclick="deletePropertyEntry('${e.id}')">🗑️</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function exportPropertyCsv(){
+  const list = propertyEntriesForFy(selectedFy);
+  const rows = [['Date','Rental Received','Loan Interest','Council Rates','Landlord Insurance','Other Expenses','Net','Notes']];
+  list.forEach(e=>{
+    const totalExp = (e.interest||0)+(e.council||0)+(e.insurance||0)+(e.other||0);
+    const net = (e.rental||0) - totalExp;
+    rows.push([e.date, (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
+  });
+  downloadCsv(toCsv(rows), `investment_property_FY${selectedFy}.csv`);
+}
+
 /* ---------- Derived data ---------- */
 function expensesForFy(fy){
   return expenses.filter(e=>fyOfDate(e.date)===fy);
 }
 function annualAmount(e){ return e.amount * e.freq; }
 
-function categoryTotals(fy){
-  const list = expensesForFy(fy);
+function categoryTotals(fy, personFilter){
+  let list = expensesForFy(fy);
+  if(personFilter) list = list.filter(e=>e.person===personFilter);
   const map = {};
   list.forEach(e=>{
     if(!map[e.category]) map[e.category] = {total:0,count:0};
@@ -815,7 +1177,7 @@ function renderRecords(){
             <td>${fmt(e.amount)}</td>
             <td><strong>${fmt(annualAmount(e))}</strong></td>
             <td>${e.receipt ? `<img class="receipt-thumb" src="${e.receipt}" onclick="openLightbox('${e.receipt}')">` : '—'}</td>
-            <td class="row-actions"><button onclick="deleteExpense('${e.id}')">🗑️</button></td>
+            <td class="row-actions"><button onclick="openEditModal('${e.id}')" title="Edit">✏️</button><button onclick="deleteExpense('${e.id}')" title="Delete">🗑️</button></td>
           </tr>
         `).join('')}
       </tbody>
@@ -823,20 +1185,46 @@ function renderRecords(){
   `;
 }
 
+let expandedAccountantCats = new Set();
+function toggleAccountantCat(name){
+  if(expandedAccountantCats.has(name)) expandedAccountantCats.delete(name);
+  else expandedAccountantCats.add(name);
+  renderAccountant();
+}
+
 function renderAccountant(){
   document.getElementById('accountant-fy-label').textContent = selectedFy + " (Jul " + (selectedFy-1) + " – Jun " + selectedFy + ")";
-  const totals = categoryTotals(selectedFy);
+  const personFilter = document.getElementById('accountant-filter-person').value;
+  const totals = categoryTotals(selectedFy, personFilter);
   const sorted = Object.entries(totals).sort((a,b)=>b[1].total-a[1].total);
   const body = document.getElementById('accountant-body');
   if(sorted.length===0){
-    body.innerHTML = `<tr><td colspan="3" class="empty"><div class="big">🧾</div>No expenses recorded for this financial year yet.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="4" class="empty"><div class="big">🧾</div>No expenses recorded for this financial year yet.</td></tr>`;
     return;
   }
+  let filteredList = expensesForFy(selectedFy);
+  if(personFilter) filteredList = filteredList.filter(e=>e.person===personFilter);
+
   let grand = 0, grandCount = 0;
   body.innerHTML = sorted.map(([name,data])=>{
     grand += data.total; grandCount += data.count;
-    return `<tr><td>${iconFor(name)} ${name}</td><td>${data.count}</td><td class="amt">${fmt(data.total)}</td></tr>`;
-  }).join('') + `<tr class="accountant-total"><td>TOTAL</td><td>${grandCount}</td><td class="amt">${fmt(grand)}</td></tr>`;
+    const isOpen = expandedAccountantCats.has(name);
+    const rowHtml = `<tr>
+      <td><button class="expand-btn" onclick="toggleAccountantCat('${name.replace(/'/g,"\\'")}')">${isOpen ? '−' : '+'}</button></td>
+      <td>${iconFor(name)} ${name}</td><td>${data.count}</td><td class="amt">${fmt(data.total)}</td>
+    </tr>`;
+    if(!isOpen) return rowHtml;
+    const items = filteredList.filter(e=>e.category===name).sort((a,b)=>b.date.localeCompare(a.date));
+    const subRows = items.map(e=>`
+      <tr>
+        <td></td>
+        <td colspan="2">${e.date} — ${e.type} <span style="color:var(--muted);">(${e.org}, ${e.person}, ${e.freqText})</span></td>
+        <td class="amt">${fmt(annualAmount(e))}</td>
+      </tr>`).join('');
+    return rowHtml + `<tr class="accountant-subrow"><td colspan="4" style="padding:0;">
+      <table class="sub-table">${subRows}</table>
+    </td></tr>`;
+  }).join('') + `<tr class="accountant-total"><td></td><td>TOTAL</td><td>${grandCount}</td><td class="amt">${fmt(grand)}</td></tr>`;
 }
 
 function renderAll(){
@@ -864,13 +1252,14 @@ function exportCsv(){
   downloadCsv(toCsv(rows), `expenses_FY${selectedFy}.csv`);
 }
 function exportAccountantCsv(){
-  const totals = categoryTotals(selectedFy);
+  const personFilter = document.getElementById('accountant-filter-person').value;
+  const totals = categoryTotals(selectedFy, personFilter);
   const sorted = Object.entries(totals).sort((a,b)=>b[1].total-a[1].total);
   const rows = [['Category','Entries','Total (Annualised)']];
   let grand=0, grandCount=0;
   sorted.forEach(([name,data])=>{ rows.push([name,data.count,data.total.toFixed(2)]); grand+=data.total; grandCount+=data.count; });
   rows.push(['TOTAL', grandCount, grand.toFixed(2)]);
-  downloadCsv(toCsv(rows), `accountant_summary_FY${selectedFy}.csv`);
+  downloadCsv(toCsv(rows), `accountant_summary_FY${selectedFy}${personFilter ? '_'+personFilter : ''}.csv`);
 }
 
 /* ---------- Toast ---------- */
@@ -886,6 +1275,7 @@ function toast(msg){
 /* ---------- Init ---------- */
 function init(){
   document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('p-date').value = new Date().toISOString().slice(0,10);
   populateCategoryDropdowns();
   populateFyDropdown();
   connectFirestore();

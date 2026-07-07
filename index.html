@@ -168,6 +168,12 @@
   }
   .person-tag.p0{background:#eaf1ff;color:#3457d5;}
   .person-tag.p1{background:#fdeaf3;color:#c23b83;}
+  .property-tag{
+    display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;
+    font-size:12px;font-weight:700;
+  }
+  .property-tag.darwin{background:#fff1de;color:#c67c0f;}
+  .property-tag.melbourne{background:#e8f0fe;color:#2a5db0;}
   .freq-tag{font-size:11px;color:var(--muted);background:#eef1f6;padding:2px 7px;border-radius:6px;}
   .row-actions button{
     border:none;background:none;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:6px;
@@ -305,6 +311,7 @@
   <button class="tab-btn" data-view="add" onclick="showView('add')">➕ Add Expense</button>
   <button class="tab-btn" data-view="records" onclick="showView('records')">📋 All Records</button>
   <button class="tab-btn" data-view="property" onclick="showView('property')">🏘️ Investment Property</button>
+  <button class="tab-btn" data-view="property-super" onclick="showView('property-super')">🏦 Investment Property - Superannuation</button>
   <button class="tab-btn" data-view="accountant" onclick="showView('accountant')">🧾 For Accountant</button>
 </nav>
 
@@ -541,6 +548,118 @@
     </div>
   </div>
 
+  <!-- SMSF INVESTMENT PROPERTY VIEW -->
+  <div class="view" id="view-property-super">
+    <div class="cards-row">
+      <div class="card c-teal">
+        <div class="k">Total Income (this FY)</div>
+        <div class="v" id="ps-stat-income">$0</div>
+        <div class="sub">Super contributions + rental</div>
+      </div>
+      <div class="card c-coral">
+        <div class="k">Total Expenses</div>
+        <div class="v" id="ps-stat-expenses">$0</div>
+        <div class="sub">Loan + other expenses</div>
+      </div>
+      <div class="card c-navy">
+        <div class="k">Net result</div>
+        <div class="v" id="ps-stat-net">$0</div>
+        <div class="sub" id="ps-stat-net-sub">Income minus expenses</div>
+      </div>
+      <div class="card c-gold">
+        <div class="k">Entries logged</div>
+        <div class="v" id="ps-stat-count">0</div>
+        <div class="sub">this financial year</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3><span class="icon">🏦</span>Log a period's figures</h3>
+        <form id="ps-form" onsubmit="return addPsEntry(event)">
+          <div class="field" style="margin-bottom:12px;">
+            <label>Property</label>
+            <select id="ps-property" required>
+              <option value="Darwin">Darwin</option>
+              <option value="Melbourne">Melbourne</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Financial year</label>
+            <input type="text" id="ps-fy-display" disabled style="background:#eef1f6;color:var(--muted);cursor:not-allowed;">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Period type</label>
+            <select id="ps-period-type" onchange="onPsPeriodTypeChange()">
+              <option value="Month">Month</option>
+              <option value="Quarter">Quarter</option>
+              <option value="Year">Full Year</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;" id="ps-month-wrap">
+            <label>Month</label>
+            <select id="ps-month" onchange="updatePsFyDisplay()"></select>
+          </div>
+          <div class="field" style="margin-bottom:12px;display:none;" id="ps-quarter-wrap">
+            <label>Quarter</label>
+            <select id="ps-quarter">
+              <option value="1">Quarter 1</option>
+              <option value="2">Quarter 2</option>
+              <option value="3">Quarter 3</option>
+              <option value="4">Quarter 4</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Sandeep's Super Contribution</label>
+            <input type="number" id="ps-sandeep-super" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Neetha's Super Contribution</label>
+            <input type="number" id="ps-neetha-super" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Rental Income</label>
+            <input type="number" id="ps-rental" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Loan (per statement)</label>
+            <input type="number" id="ps-loan" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Other expenses</label>
+            <input type="number" id="ps-other" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Notes (optional)</label>
+            <input type="text" id="ps-notes" placeholder="e.g. figures from SMSF bank + loan statements">
+          </div>
+          <button type="submit" id="ps-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3><span class="icon">📊</span>Expense breakdown</h3>
+        <canvas id="chart-ps" height="220"></canvas>
+        <h3 style="margin-top:24px;"><span class="icon">🏘️</span>Net result — Darwin vs Melbourne</h3>
+        <canvas id="chart-ps-compare" height="180"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <h3 style="margin:0;"><span class="icon">📋</span>Superannuation property records — FY <span id="ps-fy-label"></span></h3>
+        <div class="filters">
+          <select id="ps-filter-property" onchange="renderPsRecords();renderPsDashboard();">
+            <option value="">Both properties</option>
+            <option value="Darwin">Darwin only</option>
+            <option value="Melbourne">Melbourne only</option>
+          </select>
+          <button class="btn btn-outline" onclick="exportPsCsv()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div id="ps-table-wrap"></div>
+    </div>
+  </div>
+
   <!-- ACCOUNTANT VIEW -->
   <div class="view" id="view-accountant">
     <div class="panel">
@@ -688,6 +807,70 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="edit-ps-modal" onclick="closeEditPsModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3>✏️ Edit superannuation property entry</h3>
+    <form id="edit-ps-form" onsubmit="return saveEditPsEntry(event)">
+      <div class="field">
+        <label>Property</label>
+        <select id="edit-ps-property" required>
+          <option value="Darwin">Darwin</option>
+          <option value="Melbourne">Melbourne</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Period type</label>
+        <select id="edit-ps-period-type" onchange="onEditPsPeriodTypeChange()" required>
+          <option value="Month">Month</option>
+          <option value="Quarter">Quarter</option>
+          <option value="Year">Full Year</option>
+        </select>
+      </div>
+      <div class="field" id="edit-ps-month-wrap">
+        <label>Month</label>
+        <select id="edit-ps-month"></select>
+      </div>
+      <div class="field" style="display:none;" id="edit-ps-quarter-wrap">
+        <label>Quarter</label>
+        <select id="edit-ps-quarter">
+          <option value="1">Quarter 1</option>
+          <option value="2">Quarter 2</option>
+          <option value="3">Quarter 3</option>
+          <option value="4">Quarter 4</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Sandeep's Super Contribution</label>
+        <input type="number" id="edit-ps-sandeep-super" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Neetha's Super Contribution</label>
+        <input type="number" id="edit-ps-neetha-super" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Rental Income</label>
+        <input type="number" id="edit-ps-rental" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Loan</label>
+        <input type="number" id="edit-ps-loan" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Other Expenses</label>
+        <input type="number" id="edit-ps-other" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="edit-ps-notes" rows="3" style="width:100%;padding:10px;border-radius:8px;border:1px solid #d8dee8;font-family:inherit;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeEditPsModal()">Cancel</button>
+        <button type="submit" class="btn btn-teal" id="edit-ps-save-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 /* ---------- Firebase setup ---------- */
 const firebaseConfig = {
@@ -703,6 +886,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const COLLECTION = 'taxExpenses';
 const PROPERTY_COLLECTION = 'investmentProperty';
+const PS_COLLECTION = 'investmentPropertySuper';
 
 /* ---------- Category list ---------- */
 const CATEGORIES = [
@@ -735,8 +919,10 @@ function populateCategoryDropdowns(){
 /* ---------- Live data store ---------- */
 let expenses = []; // synced from Firestore
 let propertyEntries = []; // synced from Firestore
+let psEntries = []; // synced from Firestore — SMSF investment property entries
 let unsubscribe = null;
 let unsubscribeProperty = null;
+let unsubscribePs = null;
 
 function connectFirestore(){
   unsubscribe = db.collection(COLLECTION).onSnapshot(
@@ -761,6 +947,18 @@ function connectFirestore(){
     (err) => {
       console.error('Firestore property error:', err);
       toast('Could not sync investment property data: ' + err.message);
+    }
+  );
+  unsubscribePs = db.collection(PS_COLLECTION).onSnapshot(
+    (snapshot) => {
+      psEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      populateFyDropdown();
+      renderPsDashboard();
+      renderPsRecords();
+    },
+    (err) => {
+      console.error('Firestore SMSF property error:', err);
+      toast('Could not sync SMSF investment property data: ' + err.message);
     }
   );
 }
@@ -796,11 +994,15 @@ let selectedFy = currentFy();
 function propertyEntryFy(e){
   return (typeof e.fy === 'number') ? e.fy : fyOfDate(e.date);
 }
+function psEntryFy(e){
+  return (typeof e.fy === 'number') ? e.fy : currentFy();
+}
 
 function populateFyDropdown(){
   const sel = document.getElementById('fy-select');
   let fys = new Set(expenses.map(e=>fyOfDate(e.date)));
   propertyEntries.forEach(e=>fys.add(propertyEntryFy(e)));
+  psEntries.forEach(e=>fys.add(psEntryFy(e)));
   fys.add(currentFy());
   fys.add(selectedFy);
   const sorted = Array.from(fys).sort((a,b)=>b-a);
@@ -813,6 +1015,9 @@ function onFyChange(){
   syncMonthToSelectedFy();
   renderPropertyDashboard();
   renderPropertyRecords();
+  syncPsMonthToSelectedFy();
+  renderPsDashboard();
+  renderPsRecords();
 }
 
 /* ---------- Tabs ---------- */
@@ -825,6 +1030,7 @@ function showView(name){
   if(name==='records') renderRecords();
   if(name==='accountant') renderAccountant();
   if(name==='property'){ syncMonthToSelectedFy(); renderPropertyDashboard(); renderPropertyRecords(); }
+  if(name==='property-super'){ syncPsMonthToSelectedFy(); renderPsDashboard(); renderPsRecords(); }
 }
 
 /* ---------- Receipt photo handling (compressed, stored inline in Firestore) ---------- */
@@ -1046,6 +1252,32 @@ function onPeriodTypeChange(){
   updatePropertyFyDisplay();
 }
 
+// Same pattern as above, mirrored for the SMSF property tab (ps- prefixed fields).
+function syncPsMonthToSelectedFy(){
+  buildMonthYearOptions(`Jul ${selectedFy - 1}`, 'ps-month');
+  updatePsFyDisplay();
+}
+
+function updatePsFyDisplay(){
+  const el = document.getElementById('ps-fy-display');
+  if(!el) return;
+  const type = document.getElementById('ps-period-type').value;
+  let fy = selectedFy;
+  if(type === 'Month'){
+    const val = document.getElementById('ps-month').value;
+    const [mon, yearStr] = val.split(' ');
+    if(mon && yearStr) fy = monthYearToFy(mon, parseInt(yearStr,10));
+  }
+  el.value = fyLabel(fy);
+}
+
+function onPsPeriodTypeChange(){
+  const type = document.getElementById('ps-period-type').value;
+  document.getElementById('ps-month-wrap').style.display = type === 'Month' ? 'block' : 'none';
+  document.getElementById('ps-quarter-wrap').style.display = type === 'Quarter' ? 'block' : 'none';
+  updatePsFyDisplay();
+}
+
 function periodLabel(e){
   if(e.periodType === 'Year') return 'Full Year';
   if(e.periodType === 'Quarter') return 'Quarter ' + e.periodValue;
@@ -1117,6 +1349,102 @@ function toggleApprovePropertyEntry(id, currentlyApproved){
   db.collection(PROPERTY_COLLECTION).doc(id).update({ approved: !currentlyApproved })
     .then(()=>toast(currentlyApproved ? 'Approval removed' : 'Marked as approved ✓'))
     .catch(err=>toast('Could not update: ' + err.message));
+}
+
+/* ---------- SMSF Investment Property (Darwin / Melbourne) ---------- */
+function addPsEntry(e){
+  e.preventDefault();
+  const btn = document.getElementById('ps-submit-btn');
+  const property = document.getElementById('ps-property').value;
+  const notes = document.getElementById('ps-notes').value.trim();
+  const periodType = document.getElementById('ps-period-type').value;
+
+  let periodValue, fy;
+  if(periodType === 'Quarter'){
+    periodValue = document.getElementById('ps-quarter').value;
+    fy = selectedFy;
+  } else if(periodType === 'Year'){
+    periodValue = 'Full Year';
+    fy = selectedFy;
+  } else {
+    periodValue = document.getElementById('ps-month').value; // e.g. "Jul 2024"
+    const [mon, yearStr] = periodValue.split(' ');
+    fy = monthYearToFy(mon, parseInt(yearStr,10));
+  }
+
+  const payload = {
+    property, fy,
+    periodType, periodValue, notes,
+    sandeepSuper: parseFloat(document.getElementById('ps-sandeep-super').value) || 0,
+    neethaSuper: parseFloat(document.getElementById('ps-neetha-super').value) || 0,
+    rental: parseFloat(document.getElementById('ps-rental').value) || 0,
+    loan: parseFloat(document.getElementById('ps-loan').value) || 0,
+    other: parseFloat(document.getElementById('ps-other').value) || 0,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  db.collection(PS_COLLECTION).add(payload).then(() => {
+    e.target.reset();
+    document.getElementById('ps-property').value = property;
+    syncPsMonthToSelectedFy();
+    onPsPeriodTypeChange();
+    toast('Entry saved ✓ — synced for both of you');
+  }).catch(err => {
+    toast('Could not save: ' + err.message);
+  }).finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Save Entry';
+  });
+  return false;
+}
+
+function deletePsEntry(id){
+  if(!confirm('Delete this entry for both of you?')) return;
+  db.collection(PS_COLLECTION).doc(id).delete()
+    .then(()=>toast('Deleted'))
+    .catch(err=>toast('Could not delete: ' + err.message));
+}
+
+function toggleApprovePsEntry(id, currentlyApproved){
+  db.collection(PS_COLLECTION).doc(id).update({ approved: !currentlyApproved })
+    .then(()=>toast(currentlyApproved ? 'Approval removed' : 'Marked as approved ✓'))
+    .catch(err=>toast('Could not update: ' + err.message));
+}
+
+function psEntriesForFy(fy){
+  const propertyFilterEl = document.getElementById('ps-filter-property');
+  const propertyFilter = propertyFilterEl ? propertyFilterEl.value : '';
+  return psEntries.filter(e=>psEntryFy(e)===fy && (!propertyFilter || e.property===propertyFilter));
+}
+
+function psTotals(fy){
+  const list = psEntriesForFy(fy);
+  let sandeepSuper = 0, neethaSuper = 0, rental = 0, loan = 0, other = 0;
+  list.forEach(e=>{
+    sandeepSuper += e.sandeepSuper || 0;
+    neethaSuper += e.neethaSuper || 0;
+    rental += e.rental || 0;
+    loan += e.loan || 0;
+    other += e.other || 0;
+  });
+  const income = sandeepSuper + neethaSuper + rental;
+  const totalExpenses = loan + other;
+  return { sandeepSuper, neethaSuper, rental, loan, other, income, totalExpenses, net: income - totalExpenses, count: list.length };
+}
+
+// Always compares both properties for the FY, ignoring the property filter — used for the Darwin vs Melbourne chart.
+function psPropertyCompare(fy){
+  const list = psEntries.filter(e=>psEntryFy(e)===fy);
+  const result = { Darwin: 0, Melbourne: 0 };
+  list.forEach(e=>{
+    const income = (e.sandeepSuper||0) + (e.neethaSuper||0) + (e.rental||0);
+    const exp = (e.loan||0) + (e.other||0);
+    if(result[e.property] !== undefined) result[e.property] += (income - exp);
+  });
+  return result;
 }
 
 /* ---------- Edit Investment Property entry ---------- */
@@ -1191,6 +1519,91 @@ function saveEditPropertyEntry(e){
 
   db.collection(PROPERTY_COLLECTION).doc(editingPropertyId).update(payload).then(() => {
     closeEditPropertyModal();
+    toast('Entry updated ✓ — synced for both of you');
+  }).catch(err => {
+    toast('Could not save: ' + err.message);
+  }).finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+  });
+  return false;
+}
+
+/* ---------- Edit SMSF Investment Property entry ---------- */
+let editingPsId = null;
+
+function onEditPsPeriodTypeChange(){
+  const type = document.getElementById('edit-ps-period-type').value;
+  document.getElementById('edit-ps-month-wrap').style.display = type === 'Month' ? 'block' : 'none';
+  document.getElementById('edit-ps-quarter-wrap').style.display = type === 'Quarter' ? 'block' : 'none';
+}
+
+function openEditPsModal(id){
+  const entry = psEntries.find(e=>e.id===id);
+  if(!entry) return;
+  editingPsId = id;
+
+  document.getElementById('edit-ps-property').value = entry.property || 'Darwin';
+
+  const type = entry.periodType || 'Month';
+  document.getElementById('edit-ps-period-type').value = type;
+  buildMonthYearOptions(type === 'Month' ? entry.periodValue : null, 'edit-ps-month');
+  if(type === 'Quarter'){
+    document.getElementById('edit-ps-quarter').value = entry.periodValue || '1';
+  }
+  onEditPsPeriodTypeChange();
+
+  document.getElementById('edit-ps-sandeep-super').value = entry.sandeepSuper || 0;
+  document.getElementById('edit-ps-neetha-super').value = entry.neethaSuper || 0;
+  document.getElementById('edit-ps-rental').value = entry.rental || 0;
+  document.getElementById('edit-ps-loan').value = entry.loan || 0;
+  document.getElementById('edit-ps-other').value = entry.other || 0;
+  document.getElementById('edit-ps-notes').value = entry.notes || '';
+
+  document.getElementById('edit-ps-modal').classList.add('show');
+}
+
+function closeEditPsModal(){
+  document.getElementById('edit-ps-modal').classList.remove('show');
+  editingPsId = null;
+}
+
+function saveEditPsEntry(e){
+  e.preventDefault();
+  if(!editingPsId) return false;
+  const btn = document.getElementById('edit-ps-save-btn');
+  const property = document.getElementById('edit-ps-property').value;
+  const periodType = document.getElementById('edit-ps-period-type').value;
+
+  let periodValue, fy;
+  if(periodType === 'Quarter'){
+    periodValue = document.getElementById('edit-ps-quarter').value;
+    fy = selectedFy;
+  } else if(periodType === 'Year'){
+    periodValue = 'Full Year';
+    fy = selectedFy;
+  } else {
+    periodValue = document.getElementById('edit-ps-month').value;
+    const [mon, yearStr] = periodValue.split(' ');
+    fy = monthYearToFy(mon, parseInt(yearStr,10));
+  }
+
+  const payload = {
+    property, fy,
+    periodType, periodValue,
+    notes: document.getElementById('edit-ps-notes').value.trim(),
+    sandeepSuper: parseFloat(document.getElementById('edit-ps-sandeep-super').value) || 0,
+    neethaSuper: parseFloat(document.getElementById('edit-ps-neetha-super').value) || 0,
+    rental: parseFloat(document.getElementById('edit-ps-rental').value) || 0,
+    loan: parseFloat(document.getElementById('edit-ps-loan').value) || 0,
+    other: parseFloat(document.getElementById('edit-ps-other').value) || 0
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  db.collection(PS_COLLECTION).doc(editingPsId).update(payload).then(() => {
+    closeEditPsModal();
     toast('Entry updated ✓ — synced for both of you');
   }).catch(err => {
     toast('Could not save: ' + err.message);
@@ -1321,6 +1734,135 @@ function exportPropertyCsv(){
     rows.push([fyLabel(propertyEntryFy(e)), e.periodType||'', periodLabel(e), (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
   });
   downloadCsv(toCsv(rows), `investment_property_FY${selectedFy}.csv`);
+}
+
+/* ---------- SMSF Investment Property dashboard + records ---------- */
+let chartPs, chartPsCompare;
+
+function renderPsDashboard(){
+  const t = psTotals(selectedFy);
+  document.getElementById('ps-stat-income').textContent = fmt(t.income);
+  document.getElementById('ps-stat-expenses').textContent = fmt(t.totalExpenses);
+  const netEl = document.getElementById('ps-stat-net');
+  netEl.textContent = fmt(t.net);
+  const netSub = document.getElementById('ps-stat-net-sub');
+  netSub.textContent = t.net >= 0 ? 'Net profit' : 'Net loss';
+  document.getElementById('ps-stat-count').textContent = t.count;
+
+  const expenseCats = { 'Loan': t.loan, 'Other Expenses': t.other };
+  const sortedCats = Object.entries(expenseCats).filter(c=>c[1]>0).sort((a,b)=>b[1]-a[1]);
+  const ctx = document.getElementById('chart-ps');
+  if(chartPs) chartPs.destroy();
+  if(sortedCats.length){
+    chartPs = new Chart(ctx, {
+      type:'doughnut',
+      data:{
+        labels: sortedCats.map(c=>c[0]),
+        datasets:[{ data: sortedCats.map(c=>c[1]), backgroundColor:['#ef6a5a','#f5b942','#0fb5ae','#12233f'] }]
+      },
+      options:{plugins:{legend:{position:'right', labels:{boxWidth:12,font:{size:11}}}}}
+    });
+  }
+
+  const compare = psPropertyCompare(selectedFy);
+  const cmpCtx = document.getElementById('chart-ps-compare');
+  if(chartPsCompare) chartPsCompare.destroy();
+  chartPsCompare = new Chart(cmpCtx, {
+    type:'bar',
+    data:{
+      labels:['Darwin','Melbourne'],
+      datasets:[{
+        data:[compare.Darwin, compare.Melbourne],
+        backgroundColor:[compare.Darwin>=0?'#1fa87a':'#ef6a5a', compare.Melbourne>=0?'#1fa87a':'#ef6a5a'],
+        borderRadius:6
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:v=>fmt(v)}}}
+    }
+  });
+}
+
+let psSortField = 'chrono';
+let psSortDir = 'desc';
+function sortPsBy(field){
+  if(psSortField === field){
+    psSortDir = psSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    psSortField = field;
+    psSortDir = 'asc';
+  }
+  renderPsRecords();
+}
+function psSortArrow(field){
+  if(psSortField !== field) return '';
+  return psSortDir === 'asc' ? ' ▲' : ' ▼';
+}
+
+function renderPsRecords(){
+  document.getElementById('ps-fy-label').textContent = selectedFy;
+  const list = psEntriesForFy(selectedFy).slice();
+  const dir = psSortDir === 'asc' ? 1 : -1;
+  list.sort((a,b)=>{
+    let cmp;
+    if(psSortField === 'property') cmp = (a.property||'').localeCompare(b.property||'');
+    else if(psSortField === 'periodType') cmp = (a.periodType||'').localeCompare(b.periodType||'');
+    else if(psSortField === 'period') cmp = periodLabel(a).localeCompare(periodLabel(b));
+    else cmp = periodSortKey(a) - periodSortKey(b);
+    return cmp * dir;
+  });
+  const wrap = document.getElementById('ps-table-wrap');
+  if(list.length===0){
+    wrap.innerHTML = '<div class="empty"><div class="big">🏦</div>No SMSF investment property entries for this financial year yet.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th style="cursor:pointer;" onclick="sortPsBy('property')">Property${psSortArrow('property')}</th>
+        <th style="cursor:pointer;" onclick="sortPsBy('periodType')">Period Type${psSortArrow('periodType')}</th>
+        <th style="cursor:pointer;" onclick="sortPsBy('period')">Period${psSortArrow('period')}</th>
+        <th>Sandeep Super</th><th>Neetha Super</th><th>Rental Income</th><th>Loan</th><th>Other</th><th>Net</th><th>Notes</th><th>Approval</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${list.map(e=>{
+          const income = (e.sandeepSuper||0)+(e.neethaSuper||0)+(e.rental||0);
+          const totalExp = (e.loan||0)+(e.other||0);
+          const net = income - totalExp;
+          const approved = !!e.approved;
+          const propClass = e.property==='Darwin' ? 'darwin' : 'melbourne';
+          return `
+          <tr class="${approved ? 'row-approved' : ''}">
+            <td><span class="property-tag ${propClass}">${e.property||''}</span></td>
+            <td><span class="badge">${e.periodType||''}</span></td>
+            <td><span class="freq-tag">${periodLabel(e)}</span></td>
+            <td>${fmt(e.sandeepSuper||0)}</td>
+            <td>${fmt(e.neethaSuper||0)}</td>
+            <td>${fmt(e.rental||0)}</td>
+            <td>${fmt(e.loan||0)}</td>
+            <td>${fmt(e.other||0)}</td>
+            <td><strong style="color:${net>=0?'var(--good)':'var(--coral)'}">${fmt(net)}</strong></td>
+            <td>${e.notes || ''}</td>
+            <td><button class="approve-btn ${approved?'approved':''}" onclick="toggleApprovePsEntry('${e.id}', ${approved})" title="${approved?'Click to unapprove':'Click to approve'}"><span class="approve-icon"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L4.7 8.7L10 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>${approved?'Approved':'Approve'}</button></td>
+            <td class="row-actions"><button onclick="openEditPsModal('${e.id}')" title="Edit">✏️</button><button onclick="deletePsEntry('${e.id}')" title="Delete">🗑️</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function exportPsCsv(){
+  const list = psEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
+  const rows = [['Property','Financial Year','Period Type','Period','Sandeep Super','Neetha Super','Rental Income','Loan','Other Expenses','Net','Notes']];
+  list.forEach(e=>{
+    const income = (e.sandeepSuper||0)+(e.neethaSuper||0)+(e.rental||0);
+    const totalExp = (e.loan||0)+(e.other||0);
+    const net = income - totalExp;
+    rows.push([e.property||'', fyLabel(psEntryFy(e)), e.periodType||'', periodLabel(e), (e.sandeepSuper||0).toFixed(2), (e.neethaSuper||0).toFixed(2), (e.rental||0).toFixed(2), (e.loan||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
+  });
+  downloadCsv(toCsv(rows), `investment_property_super_FY${selectedFy}.csv`);
 }
 
 /* ---------- Derived data ---------- */
@@ -1623,6 +2165,8 @@ function init(){
   populateFyDropdown();
   syncMonthToSelectedFy();
   onPeriodTypeChange();
+  syncPsMonthToSelectedFy();
+  onPsPeriodTypeChange();
   connectFirestore();
 }
 init();

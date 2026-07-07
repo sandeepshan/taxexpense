@@ -173,6 +173,16 @@
     border:none;background:none;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:6px;
   }
   .row-actions button:hover{background:#f0f3f8;}
+  .approve-btn{
+    display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);background:#fff;
+    color:var(--muted);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;
+    cursor:pointer;white-space:nowrap;transition:all .15s ease;
+  }
+  .approve-btn:hover{border-color:var(--good);color:var(--good);}
+  .approve-btn.approved{background:var(--good);color:#fff;border-color:var(--good);}
+  .approve-btn.approved:hover{background:#188f68;border-color:#188f68;}
+  tr.row-approved td{background:#eafaf3;}
+  tr.row-approved:hover td{background:#dff5ec;}
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
   .toolbar .filters{display:flex;gap:10px;flex-wrap:wrap;}
   .toolbar select,.toolbar input{
@@ -907,6 +917,12 @@ function deleteExpense(id){
     .catch(err=>toast('Could not delete: ' + err.message));
 }
 
+function toggleApproveExpense(id, currentlyApproved){
+  db.collection(COLLECTION).doc(id).update({ approved: !currentlyApproved })
+    .then(()=>toast(currentlyApproved ? 'Approval removed' : 'Marked as approved ✓'))
+    .catch(err=>toast('Could not update: ' + err.message));
+}
+
 /* ---------- Edit expense modal ---------- */
 let editingExpenseId = null;
 
@@ -1082,6 +1098,12 @@ function deletePropertyEntry(id){
     .catch(err=>toast('Could not delete: ' + err.message));
 }
 
+function toggleApprovePropertyEntry(id, currentlyApproved){
+  db.collection(PROPERTY_COLLECTION).doc(id).update({ approved: !currentlyApproved })
+    .then(()=>toast(currentlyApproved ? 'Approval removed' : 'Marked as approved ✓'))
+    .catch(err=>toast('Could not update: ' + err.message));
+}
+
 /* ---------- Edit Investment Property entry ---------- */
 let editingPropertyId = null;
 
@@ -1248,14 +1270,15 @@ function renderPropertyRecords(){
       <thead><tr>
         <th style="cursor:pointer;" onclick="sortPropertyBy('periodType')">Period Type${propertySortArrow('periodType')}</th>
         <th style="cursor:pointer;" onclick="sortPropertyBy('period')">Period${propertySortArrow('period')}</th>
-        <th>Rental Income</th><th>Bank Interest</th><th>Council Bill</th><th>Landlord Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th></th>
+        <th>Rental Income</th><th>Bank Interest</th><th>Council Bill</th><th>Landlord Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th>Approval</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(e=>{
           const totalExp = (e.interest||0)+(e.council||0)+(e.insurance||0)+(e.other||0);
           const net = (e.rental||0) - totalExp;
+          const approved = !!e.approved;
           return `
-          <tr>
+          <tr class="${approved ? 'row-approved' : ''}">
             <td><span class="badge">${e.periodType||''}</span></td>
             <td><span class="freq-tag">${periodLabel(e)}</span></td>
             <td>${fmt(e.rental||0)}</td>
@@ -1265,6 +1288,7 @@ function renderPropertyRecords(){
             <td>${fmt(e.other||0)}</td>
             <td><strong style="color:${net>=0?'var(--good)':'var(--coral)'}">${fmt(net)}</strong></td>
             <td>${e.notes || ''}</td>
+            <td><button class="approve-btn ${approved?'approved':''}" onclick="toggleApprovePropertyEntry('${e.id}', ${approved})" title="${approved?'Click to unapprove':'Click to approve'}">${approved?'✓ Approved':'○ Approve'}</button></td>
             <td class="row-actions"><button onclick="openEditPropertyModal('${e.id}')" title="Edit">✏️</button><button onclick="deletePropertyEntry('${e.id}')" title="Delete">🗑️</button></td>
           </tr>`;
         }).join('')}
@@ -1465,11 +1489,13 @@ function renderRecords(){
         <th>Date</th>
         <th style="cursor:pointer;" onclick="sortRecordsBy('person')">Person${sortArrow('person')}</th>
         <th style="cursor:pointer;" onclick="sortRecordsBy('category')">Category${sortArrow('category')}</th>
-        <th>Type</th><th>Organisation</th><th>Frequency</th><th>Amount</th><th>Annual value</th><th>Receipt</th><th></th>
+        <th>Type</th><th>Organisation</th><th>Frequency</th><th>Amount</th><th>Annual value</th><th>Receipt</th><th>Approval</th><th></th>
       </tr></thead>
       <tbody>
-        ${list.map(e=>`
-          <tr>
+        ${list.map(e=>{
+          const approved = !!e.approved;
+          return `
+          <tr class="${approved ? 'row-approved' : ''}">
             <td>${e.date}</td>
             <td><span class="person-tag ${e.person==='Sandeep'?'p0':'p1'}">${e.person}</span></td>
             <td><span class="badge">${iconFor(e.category)} ${e.category}</span></td>
@@ -1479,9 +1505,10 @@ function renderRecords(){
             <td>${fmt(e.amount)}</td>
             <td><strong>${fmt(annualAmount(e))}</strong></td>
             <td>${e.receipt ? `<img class="receipt-thumb" src="${e.receipt}" onclick="openLightbox('${e.receipt}')">` : '—'}</td>
+            <td><button class="approve-btn ${approved?'approved':''}" onclick="toggleApproveExpense('${e.id}', ${approved})" title="${approved?'Click to unapprove':'Click to approve'}">${approved?'✓ Approved':'○ Approve'}</button></td>
             <td class="row-actions"><button onclick="openEditModal('${e.id}')" title="Edit">✏️</button><button onclick="deleteExpense('${e.id}')" title="Delete">🗑️</button></td>
           </tr>
-        `).join('')}
+        `;}).join('')}
       </tbody>
     </table>
   `;

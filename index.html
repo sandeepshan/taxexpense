@@ -424,14 +424,14 @@
   <div class="view" id="view-property">
     <div class="cards-row">
       <div class="card c-teal">
-        <div class="k">Rental income (this FY)</div>
+        <div class="k">Rental Income (this FY)</div>
         <div class="v" id="prop-stat-income">$0</div>
-        <div class="sub">Gross rent received</div>
+        <div class="sub">Total rent received</div>
       </div>
       <div class="card c-coral">
         <div class="k">Deductible expenses</div>
         <div class="v" id="prop-stat-expenses">$0</div>
-        <div class="sub">Fees, rates, interest, etc.</div>
+        <div class="sub">Bank interest, council, insurance, other</div>
       </div>
       <div class="card c-navy">
         <div class="k">Net rental result</div>
@@ -450,23 +450,56 @@
         <h3><span class="icon">🏘️</span>Log a period's figures</h3>
         <form id="property-form" onsubmit="return addPropertyEntry(event)">
           <div class="field" style="margin-bottom:12px;">
-            <label>Date (period this covers)</label>
-            <input type="date" id="p-date" required>
+            <label>Financial year</label>
+            <input type="text" id="p-fy-display" disabled style="background:#eef1f6;color:var(--muted);cursor:not-allowed;">
           </div>
           <div class="field" style="margin-bottom:12px;">
-            <label>Total rental received (income)</label>
+            <label>Period type</label>
+            <select id="p-period-type" onchange="onPeriodTypeChange()">
+              <option value="Month">Month</option>
+              <option value="Quarter">Quarter</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;" id="p-month-wrap">
+            <label>Month</label>
+            <select id="p-month">
+              <option value="Jul">Jul</option>
+              <option value="Aug">Aug</option>
+              <option value="Sep">Sep</option>
+              <option value="Oct">Oct</option>
+              <option value="Nov">Nov</option>
+              <option value="Dec">Dec</option>
+              <option value="Jan">Jan</option>
+              <option value="Feb">Feb</option>
+              <option value="Mar">Mar</option>
+              <option value="Apr">Apr</option>
+              <option value="May">May</option>
+              <option value="Jun">Jun</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;display:none;" id="p-quarter-wrap">
+            <label>Quarter</label>
+            <select id="p-quarter">
+              <option value="1">Quarter 1</option>
+              <option value="2">Quarter 2</option>
+              <option value="3">Quarter 3</option>
+              <option value="4">Quarter 4</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Rental Income</label>
             <input type="number" id="p-rental" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
-            <label>Total loan interest paid (expense)</label>
+            <label>Bank Interest</label>
             <input type="number" id="p-interest" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
-            <label>Council rates (expense)</label>
+            <label>Council Bill</label>
             <input type="number" id="p-council" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
-            <label>Landlord insurance (expense)</label>
+            <label>Landlord Insurance</label>
             <input type="number" id="p-insurance" step="0.01" min="0" placeholder="0.00">
           </div>
           <div class="field" style="margin-bottom:12px;">
@@ -475,7 +508,7 @@
           </div>
           <div class="field" style="margin-bottom:12px;">
             <label>Notes (optional)</label>
-            <input type="text" id="p-notes" placeholder="e.g. Q2 figures from bank + agent statements">
+            <input type="text" id="p-notes" placeholder="e.g. figures from bank + agent statements">
           </div>
           <button type="submit" id="property-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
         </form>
@@ -690,10 +723,14 @@ function fyLabel(fy){ return `FY${fy} (Jul ${fy-1} – Jun ${fy})`; }
 function currentFy(){ return fyOfDate(new Date().toISOString().slice(0,10)); }
 let selectedFy = currentFy();
 
+function propertyEntryFy(e){
+  return (typeof e.fy === 'number') ? e.fy : fyOfDate(e.date);
+}
+
 function populateFyDropdown(){
   const sel = document.getElementById('fy-select');
   let fys = new Set(expenses.map(e=>fyOfDate(e.date)));
-  propertyEntries.forEach(e=>fys.add(fyOfDate(e.date)));
+  propertyEntries.forEach(e=>fys.add(propertyEntryFy(e)));
   fys.add(currentFy());
   fys.add(selectedFy);
   const sorted = Array.from(fys).sort((a,b)=>b-a);
@@ -703,6 +740,7 @@ function populateFyDropdown(){
 function onFyChange(){
   selectedFy = parseInt(document.getElementById('fy-select').value, 10);
   renderAll();
+  updatePropertyFyDisplay();
   renderPropertyDashboard();
   renderPropertyRecords();
 }
@@ -716,7 +754,7 @@ function showView(name){
   if(name==='dashboard') renderDashboard();
   if(name==='records') renderRecords();
   if(name==='accountant') renderAccountant();
-  if(name==='property'){ renderPropertyDashboard(); renderPropertyRecords(); }
+  if(name==='property'){ updatePropertyFyDisplay(); renderPropertyDashboard(); renderPropertyRecords(); }
 }
 
 /* ---------- Receipt photo handling (compressed, stored inline in Firestore) ---------- */
@@ -878,14 +916,41 @@ function saveEditExpense(e){
 }
 
 /* ---------- Investment Property ---------- */
+const FY_MONTHS = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+
+function updatePropertyFyDisplay(){
+  const el = document.getElementById('p-fy-display');
+  if(el) el.value = fyLabel(selectedFy);
+}
+
+function onPeriodTypeChange(){
+  const type = document.getElementById('p-period-type').value;
+  document.getElementById('p-month-wrap').style.display = type === 'Month' ? 'block' : 'none';
+  document.getElementById('p-quarter-wrap').style.display = type === 'Quarter' ? 'block' : 'none';
+}
+
+function periodLabel(e){
+  if(e.periodType === 'Quarter') return 'Quarter ' + e.periodValue;
+  return e.periodValue || '';
+}
+function periodSortKey(e){
+  if(e.periodType === 'Quarter') return (parseInt(e.periodValue,10)-1) * 3;
+  const idx = FY_MONTHS.indexOf(e.periodValue);
+  return idx >= 0 ? idx : 0;
+}
+
 function addPropertyEntry(e){
   e.preventDefault();
   const btn = document.getElementById('property-submit-btn');
-  const date = document.getElementById('p-date').value;
   const notes = document.getElementById('p-notes').value.trim();
+  const periodType = document.getElementById('p-period-type').value;
+  const periodValue = periodType === 'Quarter'
+    ? document.getElementById('p-quarter').value
+    : document.getElementById('p-month').value;
 
   const payload = {
-    date, notes,
+    fy: selectedFy,
+    periodType, periodValue, notes,
     rental: parseFloat(document.getElementById('p-rental').value) || 0,
     interest: parseFloat(document.getElementById('p-interest').value) || 0,
     council: parseFloat(document.getElementById('p-council').value) || 0,
@@ -899,7 +964,8 @@ function addPropertyEntry(e){
 
   db.collection(PROPERTY_COLLECTION).add(payload).then(() => {
     e.target.reset();
-    document.getElementById('p-date').value = new Date().toISOString().slice(0,10);
+    updatePropertyFyDisplay();
+    onPeriodTypeChange();
     toast('Entry saved ✓ — synced for both of you');
   }).catch(err => {
     toast('Could not save: ' + err.message);
@@ -918,17 +984,17 @@ function deletePropertyEntry(id){
 }
 
 function propertyEntriesForFy(fy){
-  return propertyEntries.filter(e=>fyOfDate(e.date)===fy);
+  return propertyEntries.filter(e=>propertyEntryFy(e)===fy);
 }
 
 function propertyTotals(fy){
   const list = propertyEntriesForFy(fy);
   let income = 0;
-  const expenseCats = { 'Loan Interest':0, 'Council Rates':0, 'Landlord Insurance':0, 'Other Expenses':0 };
+  const expenseCats = { 'Bank Interest':0, 'Council Bill':0, 'Landlord Insurance':0, 'Other Expenses':0 };
   list.forEach(e=>{
     income += e.rental || 0;
-    expenseCats['Loan Interest'] += e.interest || 0;
-    expenseCats['Council Rates'] += e.council || 0;
+    expenseCats['Bank Interest'] += e.interest || 0;
+    expenseCats['Council Bill'] += e.council || 0;
     expenseCats['Landlord Insurance'] += e.insurance || 0;
     expenseCats['Other Expenses'] += e.other || 0;
   });
@@ -966,7 +1032,7 @@ function renderPropertyDashboard(){
 
 function renderPropertyRecords(){
   document.getElementById('property-fy-label').textContent = selectedFy;
-  const list = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const list = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(b)-periodSortKey(a));
   const wrap = document.getElementById('property-table-wrap');
   if(list.length===0){
     wrap.innerHTML = '<div class="empty"><div class="big">🏘️</div>No investment property entries for this financial year yet.</div>';
@@ -975,7 +1041,7 @@ function renderPropertyRecords(){
   wrap.innerHTML = `
     <table>
       <thead><tr>
-        <th>Date</th><th>Rental</th><th>Interest</th><th>Council</th><th>Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th></th>
+        <th>Period</th><th>Rental Income</th><th>Bank Interest</th><th>Council Bill</th><th>Landlord Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(e=>{
@@ -983,7 +1049,7 @@ function renderPropertyRecords(){
           const net = (e.rental||0) - totalExp;
           return `
           <tr>
-            <td>${e.date}</td>
+            <td><span class="freq-tag">${periodLabel(e)}</span></td>
             <td>${fmt(e.rental||0)}</td>
             <td>${fmt(e.interest||0)}</td>
             <td>${fmt(e.council||0)}</td>
@@ -1000,12 +1066,12 @@ function renderPropertyRecords(){
 }
 
 function exportPropertyCsv(){
-  const list = propertyEntriesForFy(selectedFy);
-  const rows = [['Date','Rental Received','Loan Interest','Council Rates','Landlord Insurance','Other Expenses','Net','Notes']];
+  const list = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
+  const rows = [['Financial Year','Period','Rental Income','Bank Interest','Council Bill','Landlord Insurance','Other Expenses','Net','Notes']];
   list.forEach(e=>{
     const totalExp = (e.interest||0)+(e.council||0)+(e.insurance||0)+(e.other||0);
     const net = (e.rental||0) - totalExp;
-    rows.push([e.date, (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
+    rows.push([fyLabel(propertyEntryFy(e)), periodLabel(e), (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
   });
   downloadCsv(toCsv(rows), `investment_property_FY${selectedFy}.csv`);
 }
@@ -1275,9 +1341,10 @@ function toast(msg){
 /* ---------- Init ---------- */
 function init(){
   document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('p-date').value = new Date().toISOString().slice(0,10);
   populateCategoryDropdowns();
   populateFyDropdown();
+  updatePropertyFyDisplay();
+  onPeriodTypeChange();
   connectFirestore();
 }
 init();

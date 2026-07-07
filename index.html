@@ -728,7 +728,7 @@ function populateFyDropdown(){
 function onFyChange(){
   selectedFy = parseInt(document.getElementById('fy-select').value, 10);
   renderAll();
-  updatePropertyFyDisplay();
+  syncMonthToSelectedFy();
   renderPropertyDashboard();
   renderPropertyRecords();
 }
@@ -742,7 +742,7 @@ function showView(name){
   if(name==='dashboard') renderDashboard();
   if(name==='records') renderRecords();
   if(name==='accountant') renderAccountant();
-  if(name==='property'){ updatePropertyFyDisplay(); renderPropertyDashboard(); renderPropertyRecords(); }
+  if(name==='property'){ syncMonthToSelectedFy(); renderPropertyDashboard(); renderPropertyRecords(); }
 }
 
 /* ---------- Receipt photo handling (compressed, stored inline in Firestore) ---------- */
@@ -913,7 +913,7 @@ function monthYearToFy(monthAbbr, year){
   return (idx >= 6) ? (year+1) : year; // Jul-Dec belongs to the FY ending the following June
 }
 
-function buildMonthYearOptions(){
+function buildMonthYearOptions(preferredLabel){
   const sel = document.getElementById('p-month');
   if(!sel) return;
   const now = new Date();
@@ -927,8 +927,15 @@ function buildMonthYearOptions(){
     }
   }
   sel.innerHTML = opts.map(o=>`<option value="${o}">${o}</option>`).join('');
-  const curLabel = `${CALENDAR_MONTHS[now.getMonth()]} ${curYear}`;
+  const curLabel = preferredLabel || `${CALENDAR_MONTHS[now.getMonth()]} ${curYear}`;
   if(opts.includes(curLabel)) sel.value = curLabel;
+}
+
+// Keeps the Month dropdown's default selection aligned with the FY chosen at the top of the page,
+// so the greyed-out FY field matches it until the user deliberately picks a different month.
+function syncMonthToSelectedFy(){
+  buildMonthYearOptions(`Jul ${selectedFy - 1}`);
+  updatePropertyFyDisplay();
 }
 
 function updatePropertyFyDisplay(){
@@ -999,7 +1006,7 @@ function addPropertyEntry(e){
 
   db.collection(PROPERTY_COLLECTION).add(payload).then(() => {
     e.target.reset();
-    buildMonthYearOptions();
+    syncMonthToSelectedFy();
     onPeriodTypeChange();
     toast('Entry saved ✓ — synced for both of you');
   }).catch(err => {
@@ -1378,8 +1385,7 @@ function init(){
   document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
   populateCategoryDropdowns();
   populateFyDropdown();
-  buildMonthYearOptions();
-  updatePropertyFyDisplay();
+  syncMonthToSelectedFy();
   onPeriodTypeChange();
   connectFirestore();
 }

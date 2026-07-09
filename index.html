@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tax Expense Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -108,6 +109,36 @@
     text-decoration:none;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
   .attachment-link:hover{text-decoration:underline;}
+  .period-checklist{display:flex;gap:4px;margin-bottom:16px;}
+  .pc-cell{
+    flex:1;text-align:center;padding:7px 2px;border-radius:8px;background:#f0f3f8;
+    color:var(--muted);transition:background .15s ease,color .15s ease;
+  }
+  .pc-cell.covered{background:#eafaf3;color:var(--good);}
+  .pc-icon{font-size:13px;font-weight:800;line-height:1;}
+  .pc-label{font-size:10px;font-weight:700;margin-top:3px;text-transform:uppercase;letter-spacing:.3px;}
+  .pin-gate{
+    position:fixed;inset:0;z-index:500;
+    background:linear-gradient(120deg,var(--navy) 0%,var(--navy-light) 100%);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .pin-gate.hidden{display:none;}
+  .pin-gate-box{
+    background:#fff;border-radius:16px;padding:36px 32px;max-width:340px;width:100%;
+    text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  .pin-gate-logo{
+    width:52px;height:52px;border-radius:14px;background:var(--gold);
+    display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px;
+  }
+  .pin-gate-box h2{margin:0 0 6px;color:var(--navy);font-size:19px;font-weight:600;}
+  .pin-gate-box p{margin:0 0 18px;color:var(--muted);font-size:13px;}
+  .pin-gate-box input{
+    width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;
+    font-size:16px;text-align:center;letter-spacing:4px;
+  }
+  .pin-gate-box input:focus{outline:2px solid var(--teal);border-color:var(--teal);}
+  .pin-error{color:var(--coral);font-size:12.5px;margin-top:10px;font-weight:600;}
   nav.tabs{
     display:flex;gap:6px;padding:0 32px;background:#fff;
     border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;
@@ -313,6 +344,19 @@
 </style>
 </head>
 <body>
+
+<div class="pin-gate" id="pin-gate">
+  <div class="pin-gate-box">
+    <div class="pin-gate-logo">💼</div>
+    <h2>Tax Expense Tracker</h2>
+    <p>Enter the shared passcode to continue</p>
+    <form onsubmit="return checkPin(event)">
+      <input type="password" id="pin-input" inputmode="numeric" placeholder="Passcode" autocomplete="off">
+      <button type="submit" class="btn btn-teal" style="width:100%;margin-top:10px;">Unlock</button>
+      <div class="pin-error" id="pin-error" style="display:none;">Incorrect passcode — try again.</div>
+    </form>
+  </div>
+</div>
 
 <header>
   <div class="brand">
@@ -582,6 +626,7 @@
         <h3 style="margin:0;"><span class="icon">📋</span>Investment property - Brisbane records — FY <span id="property-fy-label"></span></h3>
         <button class="btn btn-outline" onclick="exportPropertyCsv()">⬇ Export CSV</button>
       </div>
+      <div id="property-period-checklist"></div>
       <div id="property-table-wrap"></div>
     </div>
   </div>
@@ -683,6 +728,7 @@
         <h3 style="margin:0;"><span class="icon">📋</span>Darwin SMSF property records — FY <span id="psd-fy-label"></span></h3>
         <button class="btn btn-outline" onclick="exportPsCsv('Darwin')">⬇ Export CSV</button>
       </div>
+      <div id="psd-period-checklist"></div>
       <div id="psd-table-wrap"></div>
     </div>
   </div>
@@ -784,12 +830,23 @@
         <h3 style="margin:0;"><span class="icon">📋</span>Melbourne SMSF property records — FY <span id="psm-fy-label"></span></h3>
         <button class="btn btn-outline" onclick="exportPsCsv('Melbourne')">⬇ Export CSV</button>
       </div>
+      <div id="psm-period-checklist"></div>
       <div id="psm-table-wrap"></div>
     </div>
   </div>
 
   <!-- ACCOUNTANT VIEW -->
   <div class="view" id="view-accountant">
+    <div class="panel">
+      <div class="toolbar">
+        <h3 style="margin:0;"><span class="icon">📦</span>Full accountant pack — FY <span id="accountant-pack-fy-label"></span></h3>
+        <button class="btn btn-teal" onclick="exportAccountantPack()">⬇ Export Full Pack (.xlsx)</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0;">
+        One Excel workbook with everything for this financial year: a summary sheet, Professional Expenses, Investment Property - Brisbane, SMSF Darwin, and SMSF Melbourne — each on its own tab, including approval status and attachment links.
+      </p>
+    </div>
+
     <div class="panel">
       <div class="toolbar">
         <h3 style="margin:0;"><span class="icon">🧾</span>Category totals — FY <span id="accountant-fy-label"></span></h3>
@@ -1034,6 +1091,40 @@ const COLLECTION = 'taxExpenses';
 const PROPERTY_COLLECTION = 'investmentProperty';
 const PS_COLLECTION = 'investmentPropertySuper';
 
+/* ---------- Shared passcode gate ---------- */
+// Lightweight barrier only — this is client-side, so anyone who views page source can read
+// APP_PIN. It stops a random person who stumbles on the URL, not a determined attacker.
+// TODO: replace with your own passcode.
+const APP_PIN = '2604';
+const PIN_STORAGE_KEY = 'taxAppUnlocked';
+
+function checkPinGate(){
+  const gate = document.getElementById('pin-gate');
+  if(!gate) return;
+  if(localStorage.getItem(PIN_STORAGE_KEY) === 'true'){
+    gate.classList.add('hidden');
+  } else {
+    gate.classList.remove('hidden');
+    setTimeout(()=>{ const inp = document.getElementById('pin-input'); if(inp) inp.focus(); }, 50);
+  }
+}
+
+function checkPin(e){
+  e.preventDefault();
+  const input = document.getElementById('pin-input');
+  const errorEl = document.getElementById('pin-error');
+  if(input.value === APP_PIN){
+    localStorage.setItem(PIN_STORAGE_KEY, 'true');
+    document.getElementById('pin-gate').classList.add('hidden');
+    errorEl.style.display = 'none';
+  } else {
+    errorEl.style.display = 'block';
+    input.value = '';
+    input.focus();
+  }
+  return false;
+}
+
 /* ---------- Google Drive attachments ---------- */
 // TODO: replace these two placeholders once you've done the Google Cloud Console setup —
 // see the instructions Claude gave you. Nothing else in this section needs to change.
@@ -1116,6 +1207,13 @@ async function getOrCreateFolder(name, parentId){
     throw new Error(e.error?.message || `Could not create the "${name}" folder in Drive`);
   }
   const data = await res.json();
+  // Share the new folder as "anyone with the link can view" too, so your accountant can browse
+  // straight into Category/FY folders (not just open individual file links).
+  fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + googleAccessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' })
+  }).catch(()=>{ /* non-fatal — folder still works, just not link-shared if this fails */ });
   localStorage.setItem(cacheKey, data.id);
   return data.id;
 }
@@ -1754,6 +1852,31 @@ function periodSortKey(e){
   return idx >= 0 ? idx : 0;
 }
 
+// Renders a Jul–Jun coverage strip: a month counts as "logged" if it's covered by a
+// Month entry for that month, a Quarter entry spanning it, or a Full Year entry.
+function renderPeriodChecklist(list, wrapId){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  const covered = new Array(12).fill(false);
+  list.forEach(e=>{
+    if(e.periodType === 'Year'){
+      covered.fill(true);
+    } else if(e.periodType === 'Quarter'){
+      const start = (parseInt(e.periodValue,10)-1) * 3;
+      for(let i=start; i<start+3; i++){ if(i>=0 && i<12) covered[i] = true; }
+    } else if(e.periodType === 'Month'){
+      const mon = (e.periodValue||'').split(' ')[0];
+      const idx = FY_MONTHS.indexOf(mon);
+      if(idx>=0) covered[idx] = true;
+    }
+  });
+  wrap.innerHTML = `<div class="period-checklist">${FY_MONTHS.map((m,i)=>`
+    <div class="pc-cell ${covered[i]?'covered':''}" title="${m} — ${covered[i]?'logged':'not logged'}">
+      <div class="pc-icon">${covered[i]?'✓':'○'}</div>
+      <div class="pc-label">${m}</div>
+    </div>`).join('')}</div>`;
+}
+
 async function addPropertyEntry(e){
   e.preventDefault();
   const btn = document.getElementById('property-submit-btn');
@@ -2147,6 +2270,7 @@ function propertySortArrow(field){
 function renderPropertyRecords(){
   document.getElementById('property-fy-label').textContent = selectedFy;
   const list = propertyEntriesForFy(selectedFy).slice();
+  renderPeriodChecklist(list, 'property-period-checklist');
   const dir = propertySortDir === 'asc' ? 1 : -1;
   list.sort((a,b)=>{
     let cmp;
@@ -2252,6 +2376,7 @@ function psSortArrow(property, field){
 function renderPsRecords(property){
   document.getElementById(psId(property, 'fy-label')).textContent = selectedFy;
   const list = psEntriesForFy(selectedFy, property).slice();
+  renderPeriodChecklist(list, psId(property, 'period-checklist'));
   const dir = psSortDir[property] === 'asc' ? 1 : -1;
   list.sort((a,b)=>{
     let cmp;
@@ -2527,6 +2652,7 @@ function toggleAccountantCat(name){
 
 function renderAccountant(){
   document.getElementById('accountant-fy-label').textContent = selectedFy + " (Jul " + (selectedFy-1) + " – Jun " + selectedFy + ")";
+  document.getElementById('accountant-pack-fy-label').textContent = selectedFy;
   const personFilter = document.getElementById('accountant-filter-person').value;
   const totals = categoryTotals(selectedFy, personFilter);
   const sorted = Object.entries(totals).sort((a,b)=>b[1].total-a[1].total);
@@ -2595,6 +2721,66 @@ function exportAccountantCsv(){
   downloadCsv(toCsv(rows), `accountant_summary_FY${selectedFy}${personFilter ? '_'+personFilter : ''}.csv`);
 }
 
+// Bundles everything for the selected FY — professional expenses, Investment Property - Brisbane,
+// and both SMSF properties — into a single multi-sheet Excel workbook for the accountant handoff.
+function exportAccountantPack(){
+  if(typeof XLSX === 'undefined'){
+    toast('Excel export library failed to load — check your connection and try again');
+    return;
+  }
+  const personFilter = document.getElementById('accountant-filter-person').value;
+  const wb = XLSX.utils.book_new();
+
+  const expTotals = categoryTotals(selectedFy, personFilter);
+  const expGrand = Object.values(expTotals).reduce((a,c)=>a+c.total, 0);
+  const propT = propertyTotals(selectedFy);
+  const darwinT = psTotals(selectedFy, 'Darwin');
+  const melbT = psTotals(selectedFy, 'Melbourne');
+
+  const summaryRows = [
+    ['Tax Expense Pack', fyLabel(selectedFy)],
+    [],
+    ['Category', 'Income', 'Expenses', 'Net'],
+    ['Professional Expenses (annualised)', '', expGrand.toFixed(2), ''],
+    ['Investment Property - Brisbane', propT.income.toFixed(2), propT.totalExpenses.toFixed(2), propT.net.toFixed(2)],
+    ['SMSF Property - Darwin', darwinT.income.toFixed(2), darwinT.totalExpenses.toFixed(2), darwinT.net.toFixed(2)],
+    ['SMSF Property - Melbourne', melbT.income.toFixed(2), melbT.totalExpenses.toFixed(2), melbT.net.toFixed(2)]
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Summary');
+
+  let expList = expensesForFy(selectedFy);
+  if(personFilter) expList = expList.filter(e=>e.person===personFilter);
+  const expRows = [['Date','Person','Category','Type','Organisation','Frequency','Amount','Annual Value','Approved','Attachments']];
+  expList.forEach(e=>{
+    expRows.push([e.date, e.person, e.category, e.type, e.org, e.freqText, e.amount, annualAmount(e), e.approved ? 'Yes' : 'No', attachmentLinksCsv(e.attachments)]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expRows), 'Professional Expenses');
+
+  const propList = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
+  const propRows = [['Period Type','Period','Rental Income','Bank Interest','Council Bill','Landlord Insurance','Other','Net','Notes','Approved','Attachments']];
+  propList.forEach(e=>{
+    const totalExp = (e.interest||0)+(e.council||0)+(e.insurance||0)+(e.other||0);
+    const net = (e.rental||0) - totalExp;
+    propRows.push([e.periodType||'', periodLabel(e), e.rental||0, e.interest||0, e.council||0, e.insurance||0, e.other||0, net, e.notes||'', e.approved ? 'Yes' : 'No', attachmentLinksCsv(e.attachments)]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(propRows), 'Investment Property - Brisbane');
+
+  ['Darwin','Melbourne'].forEach(property=>{
+    const list = psEntriesForFy(selectedFy, property).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
+    const rows2 = [['Period Type','Period','Sandeep Super','Neetha Super','Rental Income','Loan','Other','Net','Notes','Approved','Attachments']];
+    list.forEach(e=>{
+      const income = (e.sandeepSuper||0)+(e.neethaSuper||0)+(e.rental||0);
+      const totalExp = (e.loan||0)+(e.other||0);
+      const net = income - totalExp;
+      rows2.push([e.periodType||'', periodLabel(e), e.sandeepSuper||0, e.neethaSuper||0, e.rental||0, e.loan||0, e.other||0, net, e.notes||'', e.approved ? 'Yes' : 'No', attachmentLinksCsv(e.attachments)]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows2), `SMSF ${property}`);
+  });
+
+  XLSX.writeFile(wb, `accountant_pack_FY${selectedFy}${personFilter ? '_'+personFilter : ''}.xlsx`);
+  toast('Accountant pack downloaded ✓');
+}
+
 /* ---------- Toast ---------- */
 let toastTimer;
 function toast(msg){
@@ -2607,6 +2793,7 @@ function toast(msg){
 
 /* ---------- Init ---------- */
 function init(){
+  checkPinGate();
   document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
   populateCategoryDropdowns();
   populateFyDropdown();

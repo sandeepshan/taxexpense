@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --navy:#12233f;
@@ -83,6 +84,30 @@
     70%{box-shadow:0 0 0 7px rgba(31,168,122,0);}
     100%{box-shadow:0 0 0 0 rgba(31,168,122,0);}
   }
+  .drive-btn{
+    display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#fff;
+    background:rgba(255,255,255,0.08);padding:7px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.18);
+    cursor:pointer;transition:all .15s ease;
+  }
+  .drive-btn:hover{background:rgba(255,255,255,0.16);}
+  .drive-btn.connected{background:rgba(31,168,122,0.25);border-color:rgba(31,168,122,0.5);color:#c7ffe9;}
+  .attachment-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .attachment-chip{
+    display:inline-flex;align-items:center;gap:6px;background:#eef1f6;color:var(--navy);
+    font-size:12px;font-weight:600;padding:4px 6px 4px 10px;border-radius:20px;max-width:220px;
+  }
+  .attachment-chip span.fname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;}
+  .attachment-chip button{
+    border:none;background:#dde2ea;color:var(--muted);width:16px;height:16px;border-radius:50%;
+    cursor:pointer;font-size:10px;line-height:1;flex-shrink:0;
+  }
+  .attachment-chip button:hover{background:var(--coral);color:#fff;}
+  .attachment-link-list{display:flex;flex-direction:column;gap:3px;}
+  .attachment-link{
+    display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--teal-dark);
+    text-decoration:none;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .attachment-link:hover{text-decoration:underline;}
   nav.tabs{
     display:flex;gap:6px;padding:0 32px;background:#fff;
     border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;
@@ -299,6 +324,7 @@
   </div>
   <div class="header-controls">
     <div class="sync-pill"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Connecting…</span></div>
+    <button type="button" class="drive-btn" id="drive-connect-btn" onclick="connectGoogleDrive()">🔗 Connect Google Drive</button>
     <div class="fy-control">
       <label>Financial Year</label>
       <select id="fy-select" onchange="onFyChange()"></select>
@@ -419,6 +445,11 @@
             <button type="button" class="clear-receipt" onclick="clearReceipt()">Remove</button>
           </div>
         </div>
+        <div class="field" style="grid-column:span 2;">
+          <label>Attachments — invoices/statements (Google Drive, optional)</label>
+          <input type="file" id="f-attachments" multiple onchange="onAttachmentFilesSelected(event,'expense')">
+          <div class="attachment-preview" id="expense-attachment-preview"></div>
+        </div>
         <div class="field">
           <label>&nbsp;</label>
           <button type="submit" id="submit-btn">Save Expense</button>
@@ -531,6 +562,11 @@
             <label>Notes (optional)</label>
             <input type="text" id="p-notes" placeholder="e.g. figures from bank + agent statements">
           </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Attachments — statements/invoices (Google Drive, optional)</label>
+            <input type="file" id="p-attachments" multiple onchange="onAttachmentFilesSelected(event,'property')">
+            <div class="attachment-preview" id="property-attachment-preview"></div>
+          </div>
           <button type="submit" id="property-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
         </form>
       </div>
@@ -627,6 +663,11 @@
             <label>Notes (optional)</label>
             <input type="text" id="psd-notes" placeholder="e.g. figures from SMSF bank + loan statements">
           </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Attachments — statements/invoices (Google Drive, optional)</label>
+            <input type="file" id="psd-attachments" multiple onchange="onAttachmentFilesSelected(event,'psd')">
+            <div class="attachment-preview" id="psd-attachment-preview"></div>
+          </div>
           <button type="submit" id="psd-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
         </form>
       </div>
@@ -722,6 +763,11 @@
           <div class="field" style="margin-bottom:12px;">
             <label>Notes (optional)</label>
             <input type="text" id="psm-notes" placeholder="e.g. figures from SMSF bank + loan statements">
+          </div>
+          <div class="field" style="margin-bottom:12px;">
+            <label>Attachments — statements/invoices (Google Drive, optional)</label>
+            <input type="file" id="psm-attachments" multiple onchange="onAttachmentFilesSelected(event,'psm')">
+            <div class="attachment-preview" id="psm-attachment-preview"></div>
           </div>
           <button type="submit" id="psm-submit-btn" class="btn btn-teal" style="width:100%;">Save Entry</button>
         </form>
@@ -823,6 +869,12 @@
         <label>Amount ($ per occurrence)</label>
         <input type="number" id="edit-amount" step="0.01" min="0" required>
       </div>
+      <div class="field">
+        <label>Attachments (Google Drive)</label>
+        <div class="attachment-preview" id="edit-expense-existing-attachments"></div>
+        <input type="file" id="edit-expense-attachments" multiple onchange="onAttachmentFilesSelected(event,'edit-expense')" style="margin-top:8px;">
+        <div class="attachment-preview" id="edit-expense-attachment-preview"></div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
         <button type="submit" class="btn btn-teal" id="edit-save-btn">Save Changes</button>
@@ -879,6 +931,12 @@
       <div class="field">
         <label>Notes</label>
         <textarea id="edit-p-notes" rows="3" style="width:100%;padding:10px;border-radius:8px;border:1px solid #d8dee8;font-family:inherit;"></textarea>
+      </div>
+      <div class="field">
+        <label>Attachments (Google Drive)</label>
+        <div class="attachment-preview" id="edit-property-existing-attachments"></div>
+        <input type="file" id="edit-property-attachments" multiple onchange="onAttachmentFilesSelected(event,'edit-property')" style="margin-top:8px;">
+        <div class="attachment-preview" id="edit-property-attachment-preview"></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="closeEditPropertyModal()">Cancel</button>
@@ -944,6 +1002,12 @@
         <label>Notes</label>
         <textarea id="edit-ps-notes" rows="3" style="width:100%;padding:10px;border-radius:8px;border:1px solid #d8dee8;font-family:inherit;"></textarea>
       </div>
+      <div class="field">
+        <label>Attachments (Google Drive)</label>
+        <div class="attachment-preview" id="edit-ps-existing-attachments"></div>
+        <input type="file" id="edit-ps-attachments" multiple onchange="onAttachmentFilesSelected(event,'edit-ps')" style="margin-top:8px;">
+        <div class="attachment-preview" id="edit-ps-attachment-preview"></div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="closeEditPsModal()">Cancel</button>
         <button type="submit" class="btn btn-teal" id="edit-ps-save-btn">Save Changes</button>
@@ -968,6 +1032,168 @@ const db = firebase.firestore();
 const COLLECTION = 'taxExpenses';
 const PROPERTY_COLLECTION = 'investmentProperty';
 const PS_COLLECTION = 'investmentPropertySuper';
+
+/* ---------- Google Drive attachments ---------- */
+// TODO: replace these two placeholders once you've done the Google Cloud Console setup —
+// see the instructions Claude gave you. Nothing else in this section needs to change.
+const GOOGLE_CLIENT_ID = '71864318544-492tg8qbo5c9qsb4ve4lfvjki80hlg3h.apps.googleusercontent.com';
+const DRIVE_FOLDER_ID = '1r22hW8LvUXOLv2sUzJXuH0KcIGKjQLLL';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const MAX_ATTACHMENT_SIZE = 15 * 1024 * 1024; // 15MB per file
+
+let googleAccessToken = null;
+let driveTokenClient = null;
+
+function connectGoogleDrive(){
+  if(!window.google || !google.accounts || !google.accounts.oauth2){
+    toast('Google Sign-In is still loading — try again in a second');
+    return;
+  }
+  if(GOOGLE_CLIENT_ID.startsWith('YOUR_')){
+    toast('Google Drive isn\'t configured yet — Client ID is still a placeholder');
+    return;
+  }
+  if(!driveTokenClient){
+    driveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      callback: (resp) => {
+        if(resp.error){
+          toast('Google Drive connection failed: ' + resp.error);
+          return;
+        }
+        googleAccessToken = resp.access_token;
+        updateDriveConnectionUI(true);
+        toast('Connected to Google Drive ✓');
+      }
+    });
+  }
+  driveTokenClient.requestAccessToken({ prompt: googleAccessToken ? '' : 'consent' });
+}
+
+function updateDriveConnectionUI(connected){
+  const btn = document.getElementById('drive-connect-btn');
+  if(!btn) return;
+  btn.textContent = connected ? '✅ Google Drive connected' : '🔗 Connect Google Drive';
+  btn.classList.toggle('connected', connected);
+}
+
+// Resumable upload: start a session, PUT the raw file bytes, then make the file
+// viewable by anyone with the link so the accountant can open it without a Drive login.
+function uploadFileToDrive(file){
+  return fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + googleAccessToken,
+      'Content-Type': 'application/json; charset=UTF-8',
+      'X-Upload-Content-Type': file.type || 'application/octet-stream'
+    },
+    body: JSON.stringify({ name: file.name, parents: [DRIVE_FOLDER_ID] })
+  })
+  .then(r => {
+    if(!r.ok){
+      if(r.status === 401) throw new Error('Google Drive session expired — click "Connect Google Drive" again');
+      return r.json().then(e=>{ throw new Error(e.error?.message || 'Could not start upload'); });
+    }
+    const location = r.headers.get('Location');
+    if(!location) throw new Error('Drive did not return an upload URL');
+    return fetch(location, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
+    });
+  })
+  .then(r => {
+    if(!r.ok) return r.json().then(e=>{ throw new Error(e.error?.message || 'Upload failed'); });
+    return r.json();
+  })
+  .then(fileData => {
+    return fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + googleAccessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    }).then(()=>fileData);
+  })
+  .then(fileData => ({ id: fileData.id, name: fileData.name, url: fileData.webViewLink }));
+}
+
+/* ---------- Attachment picker (shared by all 4 entry forms + 3 edit modals) ---------- */
+let pendingAttachments = {
+  expense: [], property: [], psd: [], psm: [],
+  'edit-expense': [], 'edit-property': [], 'edit-ps': []
+};
+// Attachments already saved on the entry currently being edited (kept unless the user removes them).
+let editAttachmentsState = { expense: [], property: [], ps: [] };
+
+function renderExistingAttachments(ctx){
+  const wrap = document.getElementById(`edit-${ctx}-existing-attachments`);
+  if(!wrap) return;
+  const list = editAttachmentsState[ctx];
+  wrap.innerHTML = list.map((a,i)=>`
+    <span class="attachment-chip"><a class="fname" href="${a.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="${a.name}">📎 ${a.name}</a><button type="button" onclick="removeExistingAttachment('${ctx}',${i})" title="Remove">✕</button></span>
+  `).join('');
+}
+function removeExistingAttachment(ctx, idx){
+  editAttachmentsState[ctx].splice(idx, 1);
+  renderExistingAttachments(ctx);
+}
+
+function onAttachmentFilesSelected(evt, ctx){
+  const files = Array.from(evt.target.files || []);
+  files.forEach(file=>{
+    if(file.size > MAX_ATTACHMENT_SIZE){
+      toast(`${file.name} is over 15MB — try compressing or splitting it`);
+      return;
+    }
+    pendingAttachments[ctx].push({ file, name: file.name });
+  });
+  evt.target.value = '';
+  renderAttachmentPreview(ctx);
+}
+
+function removePendingAttachment(ctx, idx){
+  pendingAttachments[ctx].splice(idx, 1);
+  renderAttachmentPreview(ctx);
+}
+
+function renderAttachmentPreview(ctx){
+  const wrap = document.getElementById(`${ctx}-attachment-preview`);
+  if(!wrap) return;
+  const list = pendingAttachments[ctx];
+  wrap.innerHTML = list.map((a,i)=>`
+    <span class="attachment-chip"><span class="fname">📎 ${a.name}</span><button type="button" onclick="removePendingAttachment('${ctx}',${i})" title="Remove">✕</button></span>
+  `).join('');
+}
+
+// Uploads every pending file for this form context to Drive, in order, and returns
+// the resulting {id,name,url} metadata array. Throws (and leaves pending files intact)
+// if Drive isn't connected or a file fails, so the caller can stop before writing to Firestore.
+async function uploadPendingAttachments(ctx){
+  const list = pendingAttachments[ctx];
+  if(!list.length) return [];
+  if(!googleAccessToken){
+    throw new Error('Connect Google Drive first (top-right button) before attaching files');
+  }
+  const uploaded = [];
+  for(const item of list){
+    const result = await uploadFileToDrive(item.file);
+    uploaded.push(result);
+  }
+  pendingAttachments[ctx] = [];
+  renderAttachmentPreview(ctx);
+  return uploaded;
+}
+
+function attachmentLinksHtml(attachments){
+  if(!attachments || !attachments.length) return '—';
+  return `<div class="attachment-link-list">${attachments.map(a=>
+    `<a class="attachment-link" href="${a.url}" target="_blank" rel="noopener" title="${a.name}">📎 ${a.name}</a>`
+  ).join('')}</div>`;
+}
+function attachmentLinksCsv(attachments){
+  if(!attachments || !attachments.length) return '';
+  return attachments.map(a=>a.url).join(' | ');
+}
 
 /* ---------- Category list ---------- */
 const CATEGORIES = [
@@ -1181,7 +1407,7 @@ function closeLightbox(){
 }
 
 /* ---------- Add expense ---------- */
-function addExpense(e){
+async function addExpense(e){
   e.preventDefault();
   const btn = document.getElementById('submit-btn');
   const date = document.getElementById('f-date').value;
@@ -1196,24 +1422,28 @@ function addExpense(e){
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
-  const payload = {
-    date, person, category, type, org, freq, freqText, amount,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-  if(pendingReceipt) payload.receipt = pendingReceipt;
+  try {
+    const attachments = await uploadPendingAttachments('expense');
 
-  db.collection(COLLECTION).add(payload).then(() => {
+    const payload = {
+      date, person, category, type, org, freq, freqText, amount,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if(pendingReceipt) payload.receipt = pendingReceipt;
+    if(attachments.length) payload.attachments = attachments;
+
+    await db.collection(COLLECTION).add(payload);
     e.target.reset();
     document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
     clearReceipt();
     toast('Expense saved ✓ — synced for both of you');
     showView('dashboard');
-  }).catch(err => {
+  } catch(err) {
     toast('Could not save: ' + err.message);
-  }).finally(() => {
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Save Expense';
-  });
+  }
   return false;
 }
 
@@ -1248,38 +1478,45 @@ function openEditModal(id){
     if(opt.text === exp.freqText) opt.selected = true;
   });
   document.getElementById('edit-amount').value = exp.amount;
+  editAttachmentsState.expense = (exp.attachments || []).slice();
+  renderExistingAttachments('expense');
+  pendingAttachments['edit-expense'] = [];
+  renderAttachmentPreview('edit-expense');
   document.getElementById('edit-modal').classList.add('show');
 }
 function closeEditModal(){
   document.getElementById('edit-modal').classList.remove('show');
   editingExpenseId = null;
 }
-function saveEditExpense(e){
+async function saveEditExpense(e){
   e.preventDefault();
   if(!editingExpenseId) return false;
   const btn = document.getElementById('edit-save-btn');
   const freqSel = document.getElementById('edit-freq');
-  const payload = {
-    date: document.getElementById('edit-date').value,
-    person: document.getElementById('edit-person').value,
-    category: document.getElementById('edit-category').value,
-    type: document.getElementById('edit-type').value.trim(),
-    org: document.getElementById('edit-org').value.trim(),
-    freq: parseInt(freqSel.value, 10),
-    freqText: freqSel.selectedOptions[0].text,
-    amount: parseFloat(document.getElementById('edit-amount').value)
-  };
   btn.disabled = true;
   btn.textContent = 'Saving…';
-  db.collection(COLLECTION).doc(editingExpenseId).update(payload).then(()=>{
+  try {
+    const newAttachments = await uploadPendingAttachments('edit-expense');
+    const payload = {
+      date: document.getElementById('edit-date').value,
+      person: document.getElementById('edit-person').value,
+      category: document.getElementById('edit-category').value,
+      type: document.getElementById('edit-type').value.trim(),
+      org: document.getElementById('edit-org').value.trim(),
+      freq: parseInt(freqSel.value, 10),
+      freqText: freqSel.selectedOptions[0].text,
+      amount: parseFloat(document.getElementById('edit-amount').value),
+      attachments: [...editAttachmentsState.expense, ...newAttachments]
+    };
+    await db.collection(COLLECTION).doc(editingExpenseId).update(payload);
     toast('Expense updated ✓');
     closeEditModal();
-  }).catch(err=>{
+  } catch(err) {
     toast('Could not update: ' + err.message);
-  }).finally(()=>{
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Save Changes';
-  });
+  }
   return false;
 }
 
@@ -1382,7 +1619,7 @@ function periodSortKey(e){
   return idx >= 0 ? idx : 0;
 }
 
-function addPropertyEntry(e){
+async function addPropertyEntry(e){
   e.preventDefault();
   const btn = document.getElementById('property-submit-btn');
   const notes = document.getElementById('p-notes').value.trim();
@@ -1401,31 +1638,35 @@ function addPropertyEntry(e){
     fy = monthYearToFy(mon, parseInt(yearStr,10));
   }
 
-  const payload = {
-    fy,
-    periodType, periodValue, notes,
-    rental: parseFloat(document.getElementById('p-rental').value) || 0,
-    interest: parseFloat(document.getElementById('p-interest').value) || 0,
-    council: parseFloat(document.getElementById('p-council').value) || 0,
-    insurance: parseFloat(document.getElementById('p-insurance').value) || 0,
-    other: parseFloat(document.getElementById('p-other').value) || 0,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
-  db.collection(PROPERTY_COLLECTION).add(payload).then(() => {
+  try {
+    const attachments = await uploadPendingAttachments('property');
+
+    const payload = {
+      fy,
+      periodType, periodValue, notes,
+      rental: parseFloat(document.getElementById('p-rental').value) || 0,
+      interest: parseFloat(document.getElementById('p-interest').value) || 0,
+      council: parseFloat(document.getElementById('p-council').value) || 0,
+      insurance: parseFloat(document.getElementById('p-insurance').value) || 0,
+      other: parseFloat(document.getElementById('p-other').value) || 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if(attachments.length) payload.attachments = attachments;
+
+    await db.collection(PROPERTY_COLLECTION).add(payload);
     e.target.reset();
     syncMonthToSelectedFy();
     onPeriodTypeChange();
     toast('Entry saved ✓ — synced for both of you');
-  }).catch(err => {
+  } catch(err) {
     toast('Could not save: ' + err.message);
-  }).finally(() => {
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Save Entry';
-  });
+  }
   return false;
 }
 
@@ -1443,7 +1684,7 @@ function toggleApprovePropertyEntry(id, currentlyApproved){
 }
 
 /* ---------- SMSF Investment Property (separate Darwin / Melbourne tabs, shared collection) ---------- */
-function addPsEntry(e, property){
+async function addPsEntry(e, property){
   e.preventDefault();
   const btn = document.getElementById(psId(property, 'submit-btn'));
   const notes = document.getElementById(psId(property, 'notes')).value.trim();
@@ -1462,31 +1703,35 @@ function addPsEntry(e, property){
     fy = monthYearToFy(mon, parseInt(yearStr,10));
   }
 
-  const payload = {
-    property, fy,
-    periodType, periodValue, notes,
-    sandeepSuper: parseFloat(document.getElementById(psId(property, 'sandeep-super')).value) || 0,
-    neethaSuper: parseFloat(document.getElementById(psId(property, 'neetha-super')).value) || 0,
-    rental: parseFloat(document.getElementById(psId(property, 'rental')).value) || 0,
-    loan: parseFloat(document.getElementById(psId(property, 'loan')).value) || 0,
-    other: parseFloat(document.getElementById(psId(property, 'other')).value) || 0,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
-  db.collection(PS_COLLECTION).add(payload).then(() => {
+  try {
+    const attachments = await uploadPendingAttachments(PS_PREFIX[property]);
+
+    const payload = {
+      property, fy,
+      periodType, periodValue, notes,
+      sandeepSuper: parseFloat(document.getElementById(psId(property, 'sandeep-super')).value) || 0,
+      neethaSuper: parseFloat(document.getElementById(psId(property, 'neetha-super')).value) || 0,
+      rental: parseFloat(document.getElementById(psId(property, 'rental')).value) || 0,
+      loan: parseFloat(document.getElementById(psId(property, 'loan')).value) || 0,
+      other: parseFloat(document.getElementById(psId(property, 'other')).value) || 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if(attachments.length) payload.attachments = attachments;
+
+    await db.collection(PS_COLLECTION).add(payload);
     e.target.reset();
     syncPsMonthToSelectedFy(property);
     onPsPeriodTypeChange(property);
     toast('Entry saved ✓ — synced for both of you');
-  }).catch(err => {
+  } catch(err) {
     toast('Could not save: ' + err.message);
-  }).finally(() => {
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Save Entry';
-  });
+  }
   return false;
 }
 
@@ -1550,6 +1795,10 @@ function openEditPropertyModal(id){
   document.getElementById('edit-p-insurance').value = entry.insurance || 0;
   document.getElementById('edit-p-other').value = entry.other || 0;
   document.getElementById('edit-p-notes').value = entry.notes || '';
+  editAttachmentsState.property = (entry.attachments || []).slice();
+  renderExistingAttachments('property');
+  pendingAttachments['edit-property'] = [];
+  renderAttachmentPreview('edit-property');
 
   document.getElementById('edit-property-modal').classList.add('show');
 }
@@ -1559,7 +1808,7 @@ function closeEditPropertyModal(){
   editingPropertyId = null;
 }
 
-function saveEditPropertyEntry(e){
+async function saveEditPropertyEntry(e){
   e.preventDefault();
   if(!editingPropertyId) return false;
   const btn = document.getElementById('edit-property-save-btn');
@@ -1578,29 +1827,31 @@ function saveEditPropertyEntry(e){
     fy = monthYearToFy(mon, parseInt(yearStr,10));
   }
 
-  const payload = {
-    fy,
-    periodType, periodValue,
-    notes: document.getElementById('edit-p-notes').value.trim(),
-    rental: parseFloat(document.getElementById('edit-p-rental').value) || 0,
-    interest: parseFloat(document.getElementById('edit-p-interest').value) || 0,
-    council: parseFloat(document.getElementById('edit-p-council').value) || 0,
-    insurance: parseFloat(document.getElementById('edit-p-insurance').value) || 0,
-    other: parseFloat(document.getElementById('edit-p-other').value) || 0
-  };
-
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
-  db.collection(PROPERTY_COLLECTION).doc(editingPropertyId).update(payload).then(() => {
+  try {
+    const newAttachments = await uploadPendingAttachments('edit-property');
+    const payload = {
+      fy,
+      periodType, periodValue,
+      notes: document.getElementById('edit-p-notes').value.trim(),
+      rental: parseFloat(document.getElementById('edit-p-rental').value) || 0,
+      interest: parseFloat(document.getElementById('edit-p-interest').value) || 0,
+      council: parseFloat(document.getElementById('edit-p-council').value) || 0,
+      insurance: parseFloat(document.getElementById('edit-p-insurance').value) || 0,
+      other: parseFloat(document.getElementById('edit-p-other').value) || 0,
+      attachments: [...editAttachmentsState.property, ...newAttachments]
+    };
+    await db.collection(PROPERTY_COLLECTION).doc(editingPropertyId).update(payload);
     closeEditPropertyModal();
     toast('Entry updated ✓ — synced for both of you');
-  }).catch(err => {
+  } catch(err) {
     toast('Could not save: ' + err.message);
-  }).finally(() => {
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Save Changes';
-  });
+  }
   return false;
 }
 
@@ -1634,6 +1885,10 @@ function openEditPsModal(id){
   document.getElementById('edit-ps-loan').value = entry.loan || 0;
   document.getElementById('edit-ps-other').value = entry.other || 0;
   document.getElementById('edit-ps-notes').value = entry.notes || '';
+  editAttachmentsState.ps = (entry.attachments || []).slice();
+  renderExistingAttachments('ps');
+  pendingAttachments['edit-ps'] = [];
+  renderAttachmentPreview('edit-ps');
 
   document.getElementById('edit-ps-modal').classList.add('show');
 }
@@ -1643,7 +1898,7 @@ function closeEditPsModal(){
   editingPsId = null;
 }
 
-function saveEditPsEntry(e){
+async function saveEditPsEntry(e){
   e.preventDefault();
   if(!editingPsId) return false;
   const btn = document.getElementById('edit-ps-save-btn');
@@ -1663,29 +1918,31 @@ function saveEditPsEntry(e){
     fy = monthYearToFy(mon, parseInt(yearStr,10));
   }
 
-  const payload = {
-    property, fy,
-    periodType, periodValue,
-    notes: document.getElementById('edit-ps-notes').value.trim(),
-    sandeepSuper: parseFloat(document.getElementById('edit-ps-sandeep-super').value) || 0,
-    neethaSuper: parseFloat(document.getElementById('edit-ps-neetha-super').value) || 0,
-    rental: parseFloat(document.getElementById('edit-ps-rental').value) || 0,
-    loan: parseFloat(document.getElementById('edit-ps-loan').value) || 0,
-    other: parseFloat(document.getElementById('edit-ps-other').value) || 0
-  };
-
   btn.disabled = true;
   btn.textContent = 'Saving…';
 
-  db.collection(PS_COLLECTION).doc(editingPsId).update(payload).then(() => {
+  try {
+    const newAttachments = await uploadPendingAttachments('edit-ps');
+    const payload = {
+      property, fy,
+      periodType, periodValue,
+      notes: document.getElementById('edit-ps-notes').value.trim(),
+      sandeepSuper: parseFloat(document.getElementById('edit-ps-sandeep-super').value) || 0,
+      neethaSuper: parseFloat(document.getElementById('edit-ps-neetha-super').value) || 0,
+      rental: parseFloat(document.getElementById('edit-ps-rental').value) || 0,
+      loan: parseFloat(document.getElementById('edit-ps-loan').value) || 0,
+      other: parseFloat(document.getElementById('edit-ps-other').value) || 0,
+      attachments: [...editAttachmentsState.ps, ...newAttachments]
+    };
+    await db.collection(PS_COLLECTION).doc(editingPsId).update(payload);
     closeEditPsModal();
     toast('Entry updated ✓ — synced for both of you');
-  }).catch(err => {
+  } catch(err) {
     toast('Could not save: ' + err.message);
-  }).finally(() => {
+  } finally {
     btn.disabled = false;
     btn.textContent = 'Save Changes';
-  });
+  }
   return false;
 }
 
@@ -1773,7 +2030,7 @@ function renderPropertyRecords(){
       <thead><tr>
         <th style="cursor:pointer;" onclick="sortPropertyBy('periodType')">Period Type${propertySortArrow('periodType')}</th>
         <th style="cursor:pointer;" onclick="sortPropertyBy('period')">Period${propertySortArrow('period')}</th>
-        <th>Rental Income</th><th>Bank Interest</th><th>Council Bill</th><th>Landlord Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th>Approval</th><th></th>
+        <th>Rental Income</th><th>Bank Interest</th><th>Council Bill</th><th>Landlord Insurance</th><th>Other</th><th>Net</th><th>Notes</th><th>Attachments</th><th>Approval</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(e=>{
@@ -1791,6 +2048,7 @@ function renderPropertyRecords(){
             <td>${fmt(e.other||0)}</td>
             <td><strong style="color:${net>=0?'var(--good)':'var(--coral)'}">${fmt(net)}</strong></td>
             <td>${e.notes || ''}</td>
+            <td>${attachmentLinksHtml(e.attachments)}</td>
             <td><button class="approve-btn ${approved?'approved':''}" onclick="toggleApprovePropertyEntry('${e.id}', ${approved})" title="${approved?'Click to unapprove':'Click to approve'}"><span class="approve-icon"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L4.7 8.7L10 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>${approved?'Approved':'Approve'}</button></td>
             <td class="row-actions"><button onclick="openEditPropertyModal('${e.id}')" title="Edit">✏️</button><button onclick="deletePropertyEntry('${e.id}')" title="Delete">🗑️</button></td>
           </tr>`;
@@ -1802,11 +2060,11 @@ function renderPropertyRecords(){
 
 function exportPropertyCsv(){
   const list = propertyEntriesForFy(selectedFy).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
-  const rows = [['Financial Year','Period Type','Period','Rental Income','Bank Interest','Council Bill','Landlord Insurance','Other Expenses','Net','Notes']];
+  const rows = [['Financial Year','Period Type','Period','Rental Income','Bank Interest','Council Bill','Landlord Insurance','Other Expenses','Net','Notes','Attachments']];
   list.forEach(e=>{
     const totalExp = (e.interest||0)+(e.council||0)+(e.insurance||0)+(e.other||0);
     const net = (e.rental||0) - totalExp;
-    rows.push([fyLabel(propertyEntryFy(e)), e.periodType||'', periodLabel(e), (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
+    rows.push([fyLabel(propertyEntryFy(e)), e.periodType||'', periodLabel(e), (e.rental||0).toFixed(2), (e.interest||0).toFixed(2), (e.council||0).toFixed(2), (e.insurance||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'', attachmentLinksCsv(e.attachments)]);
   });
   downloadCsv(toCsv(rows), `investment_property_FY${selectedFy}.csv`);
 }
@@ -1877,7 +2135,7 @@ function renderPsRecords(property){
       <thead><tr>
         <th style="cursor:pointer;" onclick="sortPsBy('${property}','periodType')">Period Type${psSortArrow(property,'periodType')}</th>
         <th style="cursor:pointer;" onclick="sortPsBy('${property}','period')">Period${psSortArrow(property,'period')}</th>
-        <th>Sandeep Super</th><th>Neetha Super</th><th>Rental Income</th><th>Loan</th><th>Other</th><th>Net</th><th>Notes</th><th>Approval</th><th></th>
+        <th>Sandeep Super</th><th>Neetha Super</th><th>Rental Income</th><th>Loan</th><th>Other</th><th>Net</th><th>Notes</th><th>Attachments</th><th>Approval</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(e=>{
@@ -1896,6 +2154,7 @@ function renderPsRecords(property){
             <td>${fmt(e.other||0)}</td>
             <td><strong style="color:${net>=0?'var(--good)':'var(--coral)'}">${fmt(net)}</strong></td>
             <td>${e.notes || ''}</td>
+            <td>${attachmentLinksHtml(e.attachments)}</td>
             <td><button class="approve-btn ${approved?'approved':''}" onclick="toggleApprovePsEntry('${e.id}', ${approved})" title="${approved?'Click to unapprove':'Click to approve'}"><span class="approve-icon"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L4.7 8.7L10 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>${approved?'Approved':'Approve'}</button></td>
             <td class="row-actions"><button onclick="openEditPsModal('${e.id}')" title="Edit">✏️</button><button onclick="deletePsEntry('${e.id}')" title="Delete">🗑️</button></td>
           </tr>`;
@@ -1907,12 +2166,12 @@ function renderPsRecords(property){
 
 function exportPsCsv(property){
   const list = psEntriesForFy(selectedFy, property).slice().sort((a,b)=>periodSortKey(a)-periodSortKey(b));
-  const rows = [['Property','Financial Year','Period Type','Period','Sandeep Super','Neetha Super','Rental Income','Loan','Other Expenses','Net','Notes']];
+  const rows = [['Property','Financial Year','Period Type','Period','Sandeep Super','Neetha Super','Rental Income','Loan','Other Expenses','Net','Notes','Attachments']];
   list.forEach(e=>{
     const income = (e.sandeepSuper||0)+(e.neethaSuper||0)+(e.rental||0);
     const totalExp = (e.loan||0)+(e.other||0);
     const net = income - totalExp;
-    rows.push([e.property||'', fyLabel(psEntryFy(e)), e.periodType||'', periodLabel(e), (e.sandeepSuper||0).toFixed(2), (e.neethaSuper||0).toFixed(2), (e.rental||0).toFixed(2), (e.loan||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'']);
+    rows.push([e.property||'', fyLabel(psEntryFy(e)), e.periodType||'', periodLabel(e), (e.sandeepSuper||0).toFixed(2), (e.neethaSuper||0).toFixed(2), (e.rental||0).toFixed(2), (e.loan||0).toFixed(2), (e.other||0).toFixed(2), net.toFixed(2), e.notes||'', attachmentLinksCsv(e.attachments)]);
   });
   downloadCsv(toCsv(rows), `investment_property_super_${property}_FY${selectedFy}.csv`);
 }
@@ -2098,7 +2357,7 @@ function renderRecords(){
         <th>Date</th>
         <th style="cursor:pointer;" onclick="sortRecordsBy('person')">Person${sortArrow('person')}</th>
         <th style="cursor:pointer;" onclick="sortRecordsBy('category')">Category${sortArrow('category')}</th>
-        <th>Type</th><th>Organisation</th><th>Frequency</th><th>Amount</th><th>Annual value</th><th>Receipt</th><th>Approval</th><th></th>
+        <th>Type</th><th>Organisation</th><th>Frequency</th><th>Amount</th><th>Annual value</th><th>Receipt</th><th>Attachments</th><th>Approval</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(e=>{
@@ -2114,6 +2373,7 @@ function renderRecords(){
             <td>${fmt(e.amount)}</td>
             <td><strong>${fmt(annualAmount(e))}</strong></td>
             <td>${e.receipt ? `<img class="receipt-thumb" src="${e.receipt}" onclick="openLightbox('${e.receipt}')">` : '—'}</td>
+            <td>${attachmentLinksHtml(e.attachments)}</td>
             <td><button class="approve-btn ${approved?'approved':''}" onclick="toggleApproveExpense('${e.id}', ${approved})" title="${approved?'Click to unapprove':'Click to approve'}"><span class="approve-icon"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L4.7 8.7L10 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>${approved?'Approved':'Approve'}</button></td>
             <td class="row-actions"><button onclick="openEditModal('${e.id}')" title="Edit">✏️</button><button onclick="deleteExpense('${e.id}')" title="Delete">🗑️</button></td>
           </tr>
@@ -2185,8 +2445,8 @@ function downloadCsv(content, filename){
 }
 function exportCsv(){
   const list = expensesForFy(selectedFy);
-  const rows = [['Date','Person','Category','Type','Organisation','Frequency','Amount','Annual Value','Has Receipt']];
-  list.forEach(e=>rows.push([e.date,e.person,e.category,e.type,e.org,e.freqText,e.amount.toFixed(2),annualAmount(e).toFixed(2), e.receipt ? 'Yes' : 'No']));
+  const rows = [['Date','Person','Category','Type','Organisation','Frequency','Amount','Annual Value','Has Receipt','Attachments']];
+  list.forEach(e=>rows.push([e.date,e.person,e.category,e.type,e.org,e.freqText,e.amount.toFixed(2),annualAmount(e).toFixed(2), e.receipt ? 'Yes' : 'No', attachmentLinksCsv(e.attachments)]));
   downloadCsv(toCsv(rows), `expenses_FY${selectedFy}.csv`);
 }
 function exportAccountantCsv(){
